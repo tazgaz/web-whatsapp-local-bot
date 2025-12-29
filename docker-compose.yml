@@ -1,27 +1,44 @@
 version: '3.8'
 
 services:
-  # WhatsApp Automation Bot
+  # הבוט שבנינו - מנהל את הוואטסאפ וה-UI
   whatsapp-bot:
     build: .
+    container_name: whatsapp-bot
     ports:
       - "3000:3000"
     volumes:
       - ./.wwebjs_auth:/app/.wwebjs_auth
       - ./.wwebjs_cache:/app/.wwebjs_cache
       - ./config.json:/app/config.json
+      - ./stats.json:/app/stats.json
+      - ./user_states.json:/app/user_states.json
+    environment:
+      - NODE_ENV=production
     restart: always
+    networks:
+      - automation-network
 
-  # n8n Automation
+  # מערכת n8n - לניהול אוטומציות ויזואליות
   n8n:
     image: n8nio/n8n:latest
+    container_name: n8n-automation
     ports:
       - "5678:5678"
     environment:
-      - N8N_HOST=localhost
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin_password_here
+      - N8N_HOST=n8n
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - NODE_ENV=production
     volumes:
       - ./n8n_data:/home/node/.n8n
     restart: always
+    networks:
+      - automation-network
+
+networks:
+  automation-network:
+    driver: bridge
