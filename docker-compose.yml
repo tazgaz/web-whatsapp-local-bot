@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  # WhatsApp Automation Bot
+  whatsapp-bot:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./.wwebjs_auth:/app/.wwebjs_auth
+      - ./.wwebjs_cache:/app/.wwebjs_cache
+      - ./config.json:/app/config.json
+    restart: always
+
+  # n8n Automation
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    restart: always

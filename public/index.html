@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול וואטסאפ אוטומטי</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #25D366;
+            --secondary: #128C7E;
+            --background: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --accent: #3b82f6;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Assistant', sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            padding: 25px 40px;
+            border-radius: 20px;
+            color: white;
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.2);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 0.9rem;
+        }
+
+        .btn-logout {
+            background: #ffffff;
+            color: var(--danger);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn-logout:hover {
+            background: #fee2e2;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 30px;
+        }
+
+        .card {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border);
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: var(--secondary);
+            margin-bottom: 25px;
+        }
+
+        #qrcode-container {
+            text-align: center;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #f1f5f9;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        #qrcode img {
+            max-width: 100%;
+            border-radius: 12px;
+        }
+
+        .auto-reply-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            margin-bottom: 25px;
+            padding: 25px;
+            position: relative;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .tag {
+            background: var(--primary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag.source {
+            background: var(--secondary);
+        }
+
+        .tag .type-label {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .tag i {
+            cursor: pointer;
+            opacity: 0.7;
+            font-style: normal;
+            font-weight: bold;
+            padding-left: 2px;
+        }
+
+        .tag-input-wrapper {
+            display: flex;
+            gap: 5px;
+            flex-grow: 1;
+            min-width: 250px;
+        }
+
+        .tag-input {
+            border: none;
+            background: transparent;
+            outline: none;
+            padding: 4px;
+            flex-grow: 1;
+            font-family: inherit;
+        }
+
+        .tag-select {
+            border: none;
+            background: #e2e8f0;
+            border-radius: 8px;
+            padding: 2px 5px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            width: auto;
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-sizing: border-box;
+            background: #fdfdfd;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .btn-delete-rule {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #fee2e2;
+            color: #ef4444;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .label-group {
+            margin-bottom: 15px;
+        }
+
+        .label-text {
+            font-weight: 600;
+            color: #64748b;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        button.btn-add {
+            background: #e0f2fe;
+            color: #0369a1;
+            width: 100%;
+            font-weight: 600;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        button.btn-save {
+            background: var(--secondary);
+            color: white;
+            width: 100%;
+            padding: 18px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+
+        pre#logs {
+            background: #0f172a;
+            color: #94a3b8;
+            padding: 25px;
+            border-radius: 20px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+
+        .log-time {
+            color: var(--primary);
+            margin-left: 10px;
+        }
+
+        .loader {
+            border: 3px solid #cbd5e1;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>WhatsApp Automation 🤖</h1>
+            <div class="header-actions">
+                <div id="status" class="status-badge">מאתחל...</div>
+                <button class="btn-logout" onclick="logout()">התנתק מהחשבון</button>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <div class="card">
+                <h2>📱 חיבור לחשבון</h2>
+                <div id="qrcode-container">
+                    <div id="loader" class="loader"></div>
+                    <p id="qr-msg" style="margin-top: 15px; color: #64748b;">יוצר ברקוד...</p>
+                    <div id="qrcode"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>💬 שאלות ותשובות אוטומטיות</h2>
+                <div id="rules-container"></div>
+                <button class="btn-add" onclick="addNewRule()">+ הוסף נושא חדש למענה</button>
+                <button class="btn-save" id="save-btn" onclick="saveAllConfig()">שמור ועדכן בוט 🚀</button>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 30px;">
+            <h2>📜 יומן פעילות</h2>
+            <pre id="logs"></pre>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const statusEl = document.getElementById('status');
+        const qrcodeEl = document.getElementById('qrcode');
+        const qrMsg = document.getElementById('qr-msg');
+        const loader = document.getElementById('loader');
+        const logsEl = document.getElementById('logs');
+        const rulesContainer = document.getElementById('rules-container');
+
+        const MATCH_TYPES = {
+            'contains': 'מכיל',
+            'equals': 'מדויק',
+            'startsWith': 'מתחיל ב..',
+            'endsWith': 'מסתיים ב..',
+            'regex': 'Regex'
+        };
+
+        socket.on('status', (status) => {
+            statusEl.innerText = translateStatus(status);
+            if (status === 'READY' || status === 'AUTHENTICATED') {
+                loader.style.display = 'none';
+                qrMsg.innerText = '✓ מחובר';
+                qrcodeEl.innerHTML = '<div style="font-size: 5rem;">📱</div>';
+            } else if (status === 'QR_RECEIVED') {
+                loader.style.display = 'none';
+                qrMsg.innerText = 'סרוק כדי להתחבר:';
+            }
+        });
+
+        socket.on('qr', (qr) => {
+            qrcodeEl.innerHTML = `<img src="${qr}">`;
+        });
+
+        socket.on('log', (msg) => {
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+            logsEl.appendChild(div);
+            logsEl.scrollTop = logsEl.scrollHeight;
+        });
+
+        function translateStatus(s) {
+            const map = {
+                'INITIALIZING': 'מאתחל...', 'QR_RECEIVED': 'ממתין לסריקה',
+                'AUTHENTICATED': 'מחובר', 'READY': 'בוט פעיל ✅',
+                'DISCONNECTED': 'מנותק', 'AUTH_FAILURE': 'שגיאת התחברות'
+            };
+            return map[s] || s;
+        }
+
+        async function logout() {
+            if (confirm('בטוח שברצונך להתנתק מהחשבון?')) {
+                const res = await fetch('/api/logout', { method: 'POST' });
+                if (res.ok) {
+                    alert('התחלת תהליך התנתקות. הדף ירוענן.');
+                    window.location.reload();
+                }
+            }
+        }
+
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const config = await res.json();
+                rulesContainer.innerHTML = '';
+                if (config.autoReplies && Array.isArray(config.autoReplies)) {
+                    config.autoReplies.forEach(rule => {
+                        addNewRule(rule.triggers || [], rule.reply || '', rule.allowedSources || [], rule.webhookUrl || '');
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading config:', err);
+            }
+        }
+
+        function createTag(value, type, tagClass, container, inputWrapper) {
+            const tag = document.createElement('span');
+            tag.className = tagClass;
+            tag.dataset.value = value;
+            tag.dataset.type = type;
+
+            let label = value;
+            if (type && MATCH_TYPES[type]) {
+                label = `<span class="type-label">${MATCH_TYPES[type]}</span> ${value}`;
+            }
+
+            tag.innerHTML = `${label} <i onclick="this.parentElement.remove()">✕</i>`;
+            container.insertBefore(tag, inputWrapper);
+        }
+
+        function addNewRule(triggers = [], reply = '', sources = [], webhook = '') {
+            const card = document.createElement('div');
+            card.className = 'auto-reply-card';
+            card.innerHTML = `
+                <div class="btn-delete-rule" onclick="this.parentElement.remove()">✕</div>
+                <div class="label-group">
+                    <span class="label-text">מילות מפתח (בחר סוג ולחץ Enter):</span>
+                    <div class="tags-container triggers-container">
+                        ${triggers.map(t => {
+                const val = typeof t === 'object' ? t.value : t;
+                const type = typeof t === 'object' ? t.type : 'contains';
+                return `<span class="tag" data-value="${val}" data-type="${type}"><span class="type-label">${MATCH_TYPES[type] || 'מכיל'}</span> ${val} <i onclick="this.parentElement.remove()">✕</i></span>`;
+            }).join('')}
+                        <div class="tag-input-wrapper">
+                            <select class="tag-select">
+                                <option value="contains">מכיל</option>
+                                <option value="equals">מדויק</option>
+                                <option value="startsWith">מתחיל ב..</option>
+                                <option value="endsWith">מסתיים ב..</option>
+                                <option value="regex">Regex</option>
+                            </select>
+                            <input type="text" class="tag-input" placeholder="הקלד ולחץ Enter">
+                        </div>
+                    </div>
+                </div>
+                <div class="label-group">
+                    <span class="label-text">מקורות מורשים (מספרים/קבוצות):</span>
+                    <div class="tags-container sources-container">
+                        ${sources.map(s => `<span class="tag source" data-value="${s}" data-type="contains">${s} <i onclick="this.parentElement.remove()">✕</i></span>`).join('')}
+                        <div class="tag-input-wrapper">
+                            <input type="text" class="tag-input" placeholder="הקלד ולחץ Enter">
+                        </div>
+                    </div>
+                </div>
+                <div class="label-group">
+                    <span class="label-text">תשובה אוטומטית:</span>
+                    <textarea rows="2" class="reply-textarea">${reply}</textarea>
+                </div>
+                <div class="label-group">
+                    <span class="label-text">Webhook URL (אופציונלי):</span>
+                    <input type="text" class="webhook-url" value="${webhook}" placeholder="http://...">
+                </div>
+            `;
+            setupTagInput(card, '.triggers-container', 'tag');
+            setupTagInput(card, '.sources-container', 'tag source');
+            rulesContainer.appendChild(card);
+        }
+
+        function setupTagInput(card, containerSelector, tagClass) {
+            const container = card.querySelector(containerSelector);
+            const inputWrapper = container.querySelector('.tag-input-wrapper');
+            const input = inputWrapper.querySelector('.tag-input');
+            const select = inputWrapper.querySelector('.tag-select');
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && input.value.trim()) {
+                    e.preventDefault();
+                    const type = select ? select.value : 'contains';
+                    createTag(input.value.trim(), type, tagClass, container, inputWrapper);
+                    input.value = '';
+                }
+            });
+        }
+
+        function getTagsFromContainer(container) {
+            const inputWrapper = container.querySelector('.tag-input-wrapper');
+            const input = inputWrapper.querySelector('.tag-input');
+            const select = inputWrapper.querySelector('.tag-select');
+
+            if (input && input.value.trim()) {
+                const type = select ? select.value : 'contains';
+                const tagClass = container.classList.contains('sources-container') ? 'tag source' : 'tag';
+                createTag(input.value.trim(), type, tagClass, container, inputWrapper);
+                input.value = '';
+            }
+
+            return Array.from(container.querySelectorAll('.tag')).map(tag => {
+                return {
+                    value: tag.dataset.value,
+                    type: tag.dataset.type
+                };
+            });
+        }
+
+        async function saveAllConfig() {
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerText = 'שומר...';
+
+            const cards = document.querySelectorAll('.auto-reply-card');
+            const newReplies = [];
+
+            cards.forEach(card => {
+                const triggerObjects = getTagsFromContainer(card.querySelector('.triggers-container'));
+                const sourceObjects = getTagsFromContainer(card.querySelector('.sources-container'));
+                const reply = card.querySelector('.reply-textarea').value;
+                const webhook = card.querySelector('.webhook-url').value;
+
+                if (reply || webhook) {
+                    newReplies.push({
+                        triggers: triggerObjects,
+                        reply,
+                        allowedSources: sourceObjects.map(s => s.value),
+                        webhookUrl: webhook
+                    });
+                }
+            });
+
+            try {
+                const res = await fetch('/api/config');
+                const config = await res.json();
+                const updatedConfig = { ...config, autoReplies: newReplies };
+
+                const saveRes = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedConfig)
+                });
+
+                if (saveRes.ok) {
+                    alert('השינויים נשמרו בהצלחה!');
+                } else {
+                    alert('שגיאה בשמירת השינויים.');
+                }
+            } catch (err) {
+                console.error('Error saving config:', err);
+                alert('שגיאת תקשורת עם השרת.');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'שמור ועדכן בוט 🚀';
+            }
+        }
+
+        loadConfig();
+    </script>
+</body>
+
+</html>

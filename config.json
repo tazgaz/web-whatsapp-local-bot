@@ -1,0 +1,31 @@
+{
+  "scheduledMessages": [
+    {
+      "to": "972500000000",
+      "message": "This is a scheduled test message.",
+      "cron": "*/5 * * * *"
+    }
+  ],
+  "autoReplies": [
+    {
+      "triggers": [
+        "אבא",
+        "הי",
+        "שלום",
+        "איפה אתה"
+      ],
+      "reply": "מה אתה רוצה?",
+      "allowedSources": [
+        "972556609260"
+      ],
+      "webhookUrl": "",
+      "matchType": "startsWith"
+    }
+  ],
+  "forwarding": [
+    {
+      "trigger": "דחוף",
+      "forwardTo": "972500000000"
+    }
+  ]
+}
