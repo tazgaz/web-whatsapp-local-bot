@@ -17,21 +17,6 @@ async function handleMessage(message, client, logCallback) {
     const text = message.body.toLowerCase();
     const sender = message.from;
 
-    // 🚀 גלובלי: שלח כל הודעה ל-n8n (אם מוגדר וובהוק כללי)
-    // נחפש כלל שבו ה-Triggers ריקים אבל יש WebhookUrl
-    const globalWebhookRule = config.autoReplies.find(r => (!r.triggers || r.triggers.length === 0) && r.webhookUrl);
-    if (globalWebhookRule) {
-        if (logCallback) logCallback(`📡 [POST] שולח הודעה גלובלית ל-n8n...`);
-        axios.post(globalWebhookRule.webhookUrl, {
-            event: 'all_messages',
-            message: message.body,
-            from: sender,
-            timestamp: Date.now()
-        }).catch(e => {
-            if (logCallback) logCallback(`✗ שגיאת וובהוק: ${e.message}`);
-        });
-    }
-
     // Get current user state
     const currentState = userStates[sender] || '';
 
