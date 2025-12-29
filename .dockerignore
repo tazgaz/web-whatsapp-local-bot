@@ -1,0 +1,14 @@
+node_modules
+.wwebjs_auth
+.wwebjs_cache
+npm-debug.log
+stats.json
+user_states.json
+.git
+.gitignore
+README.md
+RASPBERRY_PI_GUIDE.md
+BUNDLE_GUIDE.md
+Dockerfile
+docker-compose.yml
+n8n_data

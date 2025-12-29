@@ -1,26 +1,36 @@
 const fs = require('fs');
 const axios = require('axios');
 
+const { readJSON, writeJSON } = require('./utils');
+
 const STATES_FILE = './user_states.json';
 
-// Load states from file or init
-let userStates = {};
-if (fs.existsSync(STATES_FILE)) {
-    try {
-        userStates = JSON.parse(fs.readFileSync(STATES_FILE, 'utf8'));
-    } catch (e) {
-        userStates = {};
-    }
-}
+// In-memory cache
+let userStates = readJSON(STATES_FILE);
 
 function saveStates() {
-    fs.writeFileSync(STATES_FILE, JSON.stringify(userStates, null, 2));
+    writeJSON(STATES_FILE, userStates);
 }
 
 async function handleMessage(message, client, logCallback) {
-    const config = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+    const config = readJSON('./config.json', { autoReplies: [], forwarding: [] });
     const text = message.body.toLowerCase();
     const sender = message.from;
+
+    // 🚀 גלובלי: שלח כל הודעה ל-n8n (אם מוגדר וובהוק כללי)
+    // נחפש כלל שבו ה-Triggers ריקים אבל יש WebhookUrl
+    const globalWebhookRule = config.autoReplies.find(r => (!r.triggers || r.triggers.length === 0) && r.webhookUrl);
+    if (globalWebhookRule) {
+        if (logCallback) logCallback(`📡 [POST] שולח הודעה גלובלית ל-n8n...`);
+        axios.post(globalWebhookRule.webhookUrl, {
+            event: 'all_messages',
+            message: message.body,
+            from: sender,
+            timestamp: Date.now()
+        }).catch(e => {
+            if (logCallback) logCallback(`✗ שגיאת וובהוק: ${e.message}`);
+        });
+    }
 
     // Get current user state
     const currentState = userStates[sender] || '';
@@ -91,17 +101,24 @@ async function handleMessage(message, client, logCallback) {
 
             // Webhook
             if (rule.webhookUrl) {
+                if (logCallback) logCallback(`🔗 שולח Webhook לכתובת: ${rule.webhookUrl}`);
                 try {
-                    const contact = await message.getContact();
-                    await axios.post(rule.webhookUrl, {
+                    // Send webhook without fetching full contact details to avoid Puppeteer crashes
+                    const pushname = 'Unknown';
+
+                    const response = await axios.post(rule.webhookUrl, {
                         event: 'message_match',
                         message: message.body,
                         from: sender,
-                        pushname: contact.pushname,
+                        pushname: pushname,
                         currentState: currentState,
-                        nextState: rule.nextState || currentState
+                        nextState: rule.nextState || currentState,
+                        timestamp: Date.now()
                     });
-                } catch (err) { }
+                    if (logCallback) logCallback(`✅ Webhook נשלח בהצלחה (קוד: ${response.status})`);
+                } catch (err) {
+                    if (logCallback) logCallback(`✗ שגיאה בשליחת Webhook: ${err.message}`);
+                }
             }
             return;
         }
@@ -110,8 +127,12 @@ async function handleMessage(message, client, logCallback) {
     // Forwarding
     for (const rule of config.forwarding) {
         if (text.includes(rule.trigger.toLowerCase())) {
-            const contact = await message.getContact();
-            await client.sendMessage(`${rule.forwardTo}@c.us`, `הודעה מ-${contact.number}: ${message.body}`);
+            try {
+                const contact = await message.getContact();
+                await client.sendMessage(`${rule.forwardTo}@c.us`, `הודעה מ-${contact.number}: ${message.body}`);
+            } catch (err) {
+                await client.sendMessage(`${rule.forwardTo}@c.us`, `הודעה מ-${sender}: ${message.body}`);
+            }
             return;
         }
     }

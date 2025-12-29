@@ -8,6 +8,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const { handleMessage } = require('./messageHandler');
 const { initScheduler } = require('./scheduler');
 const QRCode = require('qrcode');
+const { readJSON, writeJSON } = require('./utils');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,7 +29,7 @@ if (!fs.existsSync(STATS_FILE)) {
 
 function updateStats(type, trigger = null) {
     try {
-        const stats = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+        const stats = readJSON(STATS_FILE, { daily: {}, triggers: {} });
         const today = new Date().toISOString().split('T')[0];
 
         if (!stats.daily[today]) stats.daily[today] = { received: 0, replied: 0 };
@@ -40,7 +41,7 @@ function updateStats(type, trigger = null) {
             stats.triggers[trigger] = (stats.triggers[trigger] || 0) + 1;
         }
 
-        fs.writeFileSync(STATS_FILE, JSON.stringify(stats, null, 2));
+        writeJSON(STATS_FILE, stats);
         io.emit('stats_update', stats);
     } catch (err) {
         console.error('Error updating stats:', err);
@@ -69,6 +70,8 @@ let client = new Client({
 });
 
 function initClient() {
+    logToUI('🚀 מתחיל אתחול דפדפן...');
+
     client.on('qr', async (qr) => {
         logToUI('✓ קוד QR התקבל. סרוק מהדפדפן.');
         lastQR = await QRCode.toDataURL(qr);
@@ -133,7 +136,7 @@ initClient();
 // APIs
 app.get('/api/config', (req, res) => {
     try {
-        const config = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+        const config = readJSON('./config.json', { autoReplies: [], forwarding: [] });
         res.json(config);
     } catch (err) {
         res.status(500).json({ error: 'Failed to read config' });
@@ -142,18 +145,18 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/config', (req, res) => {
     try {
-        fs.writeFileSync('./config.json', JSON.stringify(req.body, null, 2));
+        writeJSON('./config.json', req.body);
         logToUI('⚙️ הגדרות עודכנו בהצלחה.');
         res.json({ success: true });
     } catch (err) {
-        logToUI(`✗ שגיאה בשמירת הגדרות: ${err.message}`);
+        logToUI(`✗ שגיאה בשליחת הגדרות: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
 });
 
 app.get('/api/stats', (req, res) => {
     try {
-        const stats = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+        const stats = readJSON(STATS_FILE, { daily: {}, triggers: {} });
         res.json(stats);
     } catch (err) {
         res.status(500).json({ error: 'Failed to read stats' });
@@ -181,7 +184,7 @@ io.on('connection', (socket) => {
     if (lastQR) socket.emit('qr', lastQR);
     socket.emit('log', '--- מחובר לשרת הניהול ---');
     try {
-        const stats = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+        const stats = readJSON(STATS_FILE, { daily: {}, triggers: {} });
         socket.emit('stats_update', stats);
     } catch (e) { }
 });

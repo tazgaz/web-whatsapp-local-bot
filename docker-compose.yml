@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # הבוט שבנינו - מנהל את הוואטסאפ וה-UI
   whatsapp-bot:

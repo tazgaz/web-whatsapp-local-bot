@@ -30,7 +30,7 @@
       "allowedSources": [
         "972556609260"
       ],
-      "webhookUrl": "",
+      "webhookUrl": "http://localhost:5678/webhook/b39b901f-fa6d-4c71-9974-035da01846e2",
       "context": "",
       "nextState": "stage2"
     },
@@ -76,6 +76,14 @@
         "972508461164"
       ],
       "webhookUrl": "",
+      "context": "",
+      "nextState": ""
+    },
+    {
+      "triggers": [],
+      "reply": "",
+      "allowedSources": [],
+      "webhookUrl": "http://127.0.0.1:5678/webhook/b39b901f-fa6d-4c71-9974-035da01846e2",
       "context": "",
       "nextState": ""
     }
