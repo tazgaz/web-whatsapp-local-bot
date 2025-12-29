@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ניהול וואטסאפ אוטומטי</title>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <style>
         :root {
             --primary: #25D366;
@@ -44,38 +46,100 @@
             box-shadow: 0 10px 25px rgba(37, 211, 102, 0.2);
         }
 
-        .header-actions {
+        .nav-tabs {
             display: flex;
-            gap: 15px;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: #e2e8f0;
+            padding: 5px;
+            border-radius: 15px;
+            width: fit-content;
+        }
+
+        .nav-tab {
+            padding: 10px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            color: #64748b;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: var(--secondary);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--secondary);
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        /* Flow Map Styles */
+        #flow-map-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
             align-items: center;
         }
 
-        .status-badge {
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            font-size: 0.9rem;
+        #mermaid-graph {
+            width: 100%;
+            overflow: auto;
         }
 
-        .btn-logout {
-            background: #ffffff;
-            color: var(--danger);
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.9rem;
+        .simulator-card {
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 2px dashed #cbd5e1;
         }
 
-        .btn-logout:hover {
-            background: #fee2e2;
-        }
-
+        /* Existing styles from original index.html */
         .main-grid {
             display: grid;
             grid-template-columns: 380px 1fr;
@@ -121,19 +185,6 @@
             margin-bottom: 25px;
             padding: 25px;
             position: relative;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .tags-container {
@@ -157,10 +208,6 @@
             display: flex;
             align-items: center;
             gap: 6px;
-        }
-
-        .tag.source {
-            background: var(--secondary);
         }
 
         .tag .type-label {
@@ -312,25 +359,84 @@
             <h1>WhatsApp Automation 🤖</h1>
             <div class="header-actions">
                 <div id="status" class="status-badge">מאתחל...</div>
-                <button class="btn-logout" onclick="logout()">התנתק מהחשבון</button>
+                <button class="btn-logout" onclick="logout()"
+                    style="background:#fff; color:var(--danger); border:none; padding:8px 16px; border-radius:10px; cursor:pointer; font-weight:bold;">התנתק
+                    מהחשבון</button>
             </div>
         </header>
 
-        <div class="main-grid">
-            <div class="card">
-                <h2>📱 חיבור לחשבון</h2>
-                <div id="qrcode-container">
-                    <div id="loader" class="loader"></div>
-                    <p id="qr-msg" style="margin-top: 15px; color: #64748b;">יוצר ברקוד...</p>
-                    <div id="qrcode"></div>
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="switchTab('automation')">💬 אוטומציה</div>
+            <div class="nav-tab" onclick="switchTab('flow')">⛓️ מפת זרימה</div>
+            <div class="nav-tab" onclick="switchTab('dashboard')">📊 דשבורד</div>
+        </div>
+
+        <!-- Automation Tab -->
+        <div id="automation-section" class="section active">
+            <div class="main-grid">
+                <div class="card">
+                    <h2>📱 חיבור לחשבון</h2>
+                    <div id="qrcode-container">
+                        <div id="loader" class="loader"></div>
+                        <p id="qr-msg" style="margin-top: 15px; color: #64748b;">יוצר ברקוד...</p>
+                        <div id="qrcode"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>💬 שאלות ותשובות אוטומטיות</h2>
+                    <div id="rules-container"></div>
+                    <button class="btn-add" onclick="addNewRule()">+ הוסף נושא חדש למענה</button>
+                    <button class="btn-save" id="save-btn" onclick="saveAllConfig()">שמור ועדכן בוט 🚀</button>
                 </div>
             </div>
+        </div>
 
-            <div class="card">
-                <h2>💬 שאלות ותשובות אוטומטיות</h2>
-                <div id="rules-container"></div>
-                <button class="btn-add" onclick="addNewRule()">+ הוסף נושא חדש למענה</button>
-                <button class="btn-save" id="save-btn" onclick="saveAllConfig()">שמור ועדכן בוט 🚀</button>
+        <!-- Flow Map Tab -->
+        <div id="flow-section" class="section">
+            <div class="simulator-card">
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <div style="flex-grow:1;">
+                        <span class="label-text">סימולטור שיחה - בדוק את המפה:</span>
+                        <input type="text" id="sim-input" placeholder="הקלד הודעה לבדיקת הזרימה...">
+                    </div>
+                    <div style="width:150px;">
+                        <span class="label-text">מצב נוכחי:</span>
+                        <div id="sim-state"
+                            style="padding:10px; background:white; border-radius:10px; font-weight:bold; border:1px solid #cbd5e1; text-align:center;">
+                            Root</div>
+                    </div>
+                </div>
+                <p id="sim-result" style="margin-top:10px; font-size:0.9rem; color:var(--secondary); font-weight:bold;">
+                </p>
+            </div>
+            <div id="flow-map-container">
+                <h2>⛓️ מפת זרימת השיחה</h2>
+                <div id="mermaid-graph" class="mermaid">
+                    graph TD
+                    START((הודעה חדשה)) --> Root[ללא מצב]
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard-section" class="section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-received">0</div>
+                    <div class="stat-label">הודעות שהתקבלו היום</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-replied">0</div>
+                    <div class="stat-label">מענה אוטומטי שנשלח</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-efficiency">0%</div>
+                    <div class="stat-label">אחוז מענה</div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="dailyChart"></canvas>
             </div>
         </div>
 
@@ -350,14 +456,128 @@
         const logsEl = document.getElementById('logs');
         const rulesContainer = document.getElementById('rules-container');
 
-        const MATCH_TYPES = {
-            'contains': 'מכיל',
-            'equals': 'מדויק',
-            'startsWith': 'מתחיל ב..',
-            'endsWith': 'מסתיים ב..',
-            'regex': 'Regex'
-        };
+        // Chart management
+        let dailyChart;
+        function initChart() {
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            dailyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'הודעות שהתקבלו',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'מענה אוטומטי',
+                        data: [],
+                        borderColor: '#25D366',
+                        backgroundColor: 'rgba(37, 211, 102, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { font: { family: 'Assistant' } } } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
 
+        socket.on('stats_update', (stats) => {
+            const today = new Date().toISOString().split('T')[0];
+            const todayStats = stats.daily[today] || { received: 0, replied: 0 };
+
+            document.getElementById('stat-received').innerText = todayStats.received;
+            document.getElementById('stat-replied').innerText = todayStats.replied;
+            const efficiency = todayStats.received > 0 ? Math.round((todayStats.replied / todayStats.received) * 100) : 0;
+            document.getElementById('stat-efficiency').innerText = efficiency + '%';
+
+            // Update chart
+            const labels = Object.keys(stats.daily).sort();
+            dailyChart.data.labels = labels;
+            dailyChart.data.datasets[0].data = labels.map(l => stats.daily[l].received);
+            dailyChart.data.datasets[1].data = labels.map(l => stats.daily[l].replied);
+            dailyChart.update();
+        });
+
+        // Initialize Mermaid
+        mermaid.initialize({ startOnLoad: true, theme: 'forest', flowchart: { curve: 'basis' } });
+
+        function updateFlowMap(replies) {
+            let flow = 'graph TD\n';
+            flow += 'START((הודעה חדשה)) --> Root[ללא מצב]\n';
+
+            const states = new Set(['Root']);
+            replies.forEach(r => {
+                if (r.context) states.add(r.context);
+                if (r.nextState) states.add(r.nextState);
+            });
+
+            replies.forEach((rule, idx) => {
+                const triggers = rule.triggers.map(t => typeof t === 'object' ? t.value : t).join(', ') || 'תפוס-הכל';
+                const from = rule.context || 'Root';
+                const to = rule.nextState || 'END((סיום))';
+
+                // Add node with reply preview
+                const replyShort = rule.reply ? rule.reply.substring(0, 20) + '...' : 'ללא תשובה';
+                flow += `${from} -- "${triggers} <br/> [${replyShort}]" --> ${to}\n`;
+            });
+
+            const element = document.getElementById('mermaid-graph');
+            element.innerHTML = flow;
+            element.removeAttribute('data-processed');
+            mermaid.contentLoaded();
+        }
+
+        // Simulator Logic
+        let simCurrentState = 'Root';
+        document.getElementById('sim-input').addEventListener('input', (e) => {
+            const text = e.target.value.toLowerCase();
+            if (!text) return;
+
+            fetch('/api/config').then(r => r.json()).then(config => {
+                const rule = config.autoReplies.find(r => {
+                    const ctxMatch = (r.context || 'Root') === simCurrentState;
+                    if (!ctxMatch) return false;
+
+                    if (r.triggers.length === 0) return true;
+                    return r.triggers.some(t => {
+                        const val = (typeof t === 'object' ? t.value : t).toLowerCase();
+                        return text.includes(val);
+                    });
+                });
+
+                if (rule) {
+                    document.getElementById('sim-result').innerText = `✅ הבוט יגיב: "${rule.reply}"`;
+                    if (rule.nextState) {
+                        simCurrentState = rule.nextState;
+                        document.getElementById('sim-state').innerText = simCurrentState;
+                    }
+                } else {
+                    document.getElementById('sim-result').innerText = `❌ אין התאמה במצב ${simCurrentState}`;
+                }
+            });
+        });
+
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+
+            event.currentTarget.classList.add('active');
+            document.getElementById(tab + '-section').classList.add('active');
+
+            if (tab === 'dashboard' && dailyChart) dailyChart.update();
+            if (tab === 'flow') {
+                fetch('/api/config').then(r => r.json()).then(c => updateFlowMap(c.autoReplies));
+            }
+        }
+
+        // Rest of existing logic for automation
         socket.on('status', (status) => {
             statusEl.innerText = translateStatus(status);
             if (status === 'READY' || status === 'AUTHENTICATED') {
@@ -391,6 +611,14 @@
             return map[s] || s;
         }
 
+        const MATCH_TYPES = {
+            'contains': 'מכיל',
+            'equals': 'מדויק',
+            'startsWith': 'מתחיל ב..',
+            'endsWith': 'מסתיים ב..',
+            'regex': 'Regex'
+        };
+
         async function logout() {
             if (confirm('בטוח שברצונך להתנתק מהחשבון?')) {
                 const res = await fetch('/api/logout', { method: 'POST' });
@@ -408,7 +636,7 @@
                 rulesContainer.innerHTML = '';
                 if (config.autoReplies && Array.isArray(config.autoReplies)) {
                     config.autoReplies.forEach(rule => {
-                        addNewRule(rule.triggers || [], rule.reply || '', rule.allowedSources || [], rule.webhookUrl || '');
+                        addNewRule(rule.triggers || [], rule.reply || '', rule.allowedSources || [], rule.webhookUrl || '', rule.nextState || '');
                     });
                 }
             } catch (err) {
@@ -421,23 +649,21 @@
             tag.className = tagClass;
             tag.dataset.value = value;
             tag.dataset.type = type;
-
             let label = value;
             if (type && MATCH_TYPES[type]) {
                 label = `<span class="type-label">${MATCH_TYPES[type]}</span> ${value}`;
             }
-
             tag.innerHTML = `${label} <i onclick="this.parentElement.remove()">✕</i>`;
             container.insertBefore(tag, inputWrapper);
         }
 
-        function addNewRule(triggers = [], reply = '', sources = [], webhook = '') {
+        function addNewRule(triggers = [], reply = '', sources = [], webhook = '', nextState = '') {
             const card = document.createElement('div');
             card.className = 'auto-reply-card';
             card.innerHTML = `
                 <div class="btn-delete-rule" onclick="this.parentElement.remove()">✕</div>
                 <div class="label-group">
-                    <span class="label-text">מילות מפתח (בחר סוג ולחץ Enter):</span>
+                    <span class="label-text">מילות מפתח:</span>
                     <div class="tags-container triggers-container">
                         ${triggers.map(t => {
                 const val = typeof t === 'object' ? t.value : t;
@@ -456,8 +682,19 @@
                         </div>
                     </div>
                 </div>
+                <!-- Context Flow (NEW) -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                    <div class="label-group">
+                        <span class="label-text">⚠️ הצג רק אם המשתמש נמצא בשלב:</span>
+                        <input type="text" class="rule-context" placeholder="למשל: menu (אופציונלי)" value="">
+                    </div>
+                    <div class="label-group">
+                        <span class="label-text">➡️ בסיום, העבר את המשתמש לשלב:</span>
+                        <input type="text" class="next-state" placeholder="למשל: orders" value="${nextState}">
+                    </div>
+                </div>
                 <div class="label-group">
-                    <span class="label-text">מקורות מורשים (מספרים/קבוצות):</span>
+                    <span class="label-text">מקורות מורשים:</span>
                     <div class="tags-container sources-container">
                         ${sources.map(s => `<span class="tag source" data-value="${s}" data-type="contains">${s} <i onclick="this.parentElement.remove()">✕</i></span>`).join('')}
                         <div class="tag-input-wrapper">
@@ -470,7 +707,7 @@
                     <textarea rows="2" class="reply-textarea">${reply}</textarea>
                 </div>
                 <div class="label-group">
-                    <span class="label-text">Webhook URL (אופציונלי):</span>
+                    <span class="label-text">Webhook URL:</span>
                     <input type="text" class="webhook-url" value="${webhook}" placeholder="http://...">
                 </div>
             `;
@@ -484,7 +721,6 @@
             const inputWrapper = container.querySelector('.tag-input-wrapper');
             const input = inputWrapper.querySelector('.tag-input');
             const select = inputWrapper.querySelector('.tag-select');
-
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && input.value.trim()) {
                     e.preventDefault();
@@ -498,72 +734,58 @@
         function getTagsFromContainer(container) {
             const inputWrapper = container.querySelector('.tag-input-wrapper');
             const input = inputWrapper.querySelector('.tag-input');
-            const select = inputWrapper.querySelector('.tag-select');
-
             if (input && input.value.trim()) {
+                const select = inputWrapper.querySelector('.tag-select');
                 const type = select ? select.value : 'contains';
-                const tagClass = container.classList.contains('sources-container') ? 'tag source' : 'tag';
-                createTag(input.value.trim(), type, tagClass, container, inputWrapper);
+                createTag(input.value.trim(), type, container.classList.contains('sources-container') ? 'tag source' : 'tag', container, inputWrapper);
                 input.value = '';
             }
-
-            return Array.from(container.querySelectorAll('.tag')).map(tag => {
-                return {
-                    value: tag.dataset.value,
-                    type: tag.dataset.type
-                };
-            });
+            return Array.from(container.querySelectorAll('.tag')).map(tag => ({
+                value: tag.dataset.value,
+                type: tag.dataset.type
+            }));
         }
 
         async function saveAllConfig() {
             const saveBtn = document.getElementById('save-btn');
             saveBtn.disabled = true;
             saveBtn.innerText = 'שומר...';
-
             const cards = document.querySelectorAll('.auto-reply-card');
             const newReplies = [];
-
             cards.forEach(card => {
-                const triggerObjects = getTagsFromContainer(card.querySelector('.triggers-container'));
-                const sourceObjects = getTagsFromContainer(card.querySelector('.sources-container'));
+                const triggers = getTagsFromContainer(card.querySelector('.triggers-container'));
+                const sources = getTagsFromContainer(card.querySelector('.sources-container'));
                 const reply = card.querySelector('.reply-textarea').value;
                 const webhook = card.querySelector('.webhook-url').value;
+                const context = card.querySelector('.rule-context').value;
+                const nextState = card.querySelector('.next-state').value;
 
                 if (reply || webhook) {
                     newReplies.push({
-                        triggers: triggerObjects,
+                        triggers,
                         reply,
-                        allowedSources: sourceObjects.map(s => s.value),
-                        webhookUrl: webhook
+                        allowedSources: sources.map(s => s.value),
+                        webhookUrl: webhook,
+                        context,
+                        nextState
                     });
                 }
             });
-
             try {
                 const res = await fetch('/api/config');
                 const config = await res.json();
-                const updatedConfig = { ...config, autoReplies: newReplies };
-
                 const saveRes = await fetch('/api/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedConfig)
+                    body: JSON.stringify({ ...config, autoReplies: newReplies })
                 });
-
-                if (saveRes.ok) {
-                    alert('השינויים נשמרו בהצלחה!');
-                } else {
-                    alert('שגיאה בשמירת השינויים.');
-                }
-            } catch (err) {
-                console.error('Error saving config:', err);
-                alert('שגיאת תקשורת עם השרת.');
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.innerText = 'שמור ועדכן בוט 🚀';
-            }
+                if (saveRes.ok) alert('השינויים נשמרו בהצלחה!');
+                else alert('שגיאה בשמירת השינויים.');
+            } catch (err) { alert('שגיאת תקשורת עם השרת.'); }
+            finally { saveBtn.disabled = false; saveBtn.innerText = 'שמור ועדכן בוט 🚀'; }
         }
 
+        initChart();
         loadConfig();
     </script>
 </body>

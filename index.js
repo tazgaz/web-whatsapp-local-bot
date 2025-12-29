@@ -11,7 +11,7 @@ const QRCode = require('qrcode');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = require('socket.io')(server);
 const port = 3000;
 
 app.use(bodyParser.json());
@@ -19,6 +19,33 @@ app.use(express.static('public'));
 
 let clientStatus = 'INITIALIZING';
 let lastQR = '';
+
+// Stats management
+const STATS_FILE = './stats.json';
+if (!fs.existsSync(STATS_FILE)) {
+    fs.writeFileSync(STATS_FILE, JSON.stringify({ daily: {}, triggers: {} }, null, 2));
+}
+
+function updateStats(type, trigger = null) {
+    try {
+        const stats = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+        const today = new Date().toISOString().split('T')[0];
+
+        if (!stats.daily[today]) stats.daily[today] = { received: 0, replied: 0 };
+
+        if (type === 'received') stats.daily[today].received++;
+        if (type === 'replied') stats.daily[today].replied++;
+
+        if (trigger) {
+            stats.triggers[trigger] = (stats.triggers[trigger] || 0) + 1;
+        }
+
+        fs.writeFileSync(STATS_FILE, JSON.stringify(stats, null, 2));
+        io.emit('stats_update', stats);
+    } catch (err) {
+        console.error('Error updating stats:', err);
+    }
+}
 
 function logToUI(msg) {
     console.log(msg);
@@ -77,8 +104,14 @@ function initClient() {
 
     client.on('message', async (msg) => {
         logToUI(`הודעה נכנסת מ-${msg.from}: ${msg.body}`);
+        updateStats('received');
         try {
-            await handleMessage(msg, client, logToUI);
+            await handleMessage(msg, client, (logMsg) => {
+                logToUI(logMsg);
+                if (logMsg.includes('✅ מענה נשלח')) {
+                    updateStats('replied');
+                }
+            });
         } catch (err) {
             logToUI(`✗ שגיאה בטיפול בהודעה: ${err.message}`);
         }
@@ -109,13 +142,21 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/config', (req, res) => {
     try {
-        console.log('Updating config:', JSON.stringify(req.body, null, 2));
         fs.writeFileSync('./config.json', JSON.stringify(req.body, null, 2));
         logToUI('⚙️ הגדרות עודכנו בהצלחה.');
         res.json({ success: true });
     } catch (err) {
         logToUI(`✗ שגיאה בשמירת הגדרות: ${err.message}`);
         res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/stats', (req, res) => {
+    try {
+        const stats = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+        res.json(stats);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to read stats' });
     }
 });
 
@@ -139,6 +180,10 @@ io.on('connection', (socket) => {
     socket.emit('status', clientStatus);
     if (lastQR) socket.emit('qr', lastQR);
     socket.emit('log', '--- מחובר לשרת הניהול ---');
+    try {
+        const stats = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+        socket.emit('stats_update', stats);
+    } catch (e) { }
 });
 
 server.listen(port, () => {

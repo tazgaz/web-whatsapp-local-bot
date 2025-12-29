@@ -9,17 +9,75 @@
   "autoReplies": [
     {
       "triggers": [
-        "אבא",
-        "הי",
-        "שלום",
-        "איפה אתה"
+        {
+          "value": "אבא",
+          "type": "contains"
+        },
+        {
+          "value": "הי",
+          "type": "contains"
+        },
+        {
+          "value": "שלום",
+          "type": "contains"
+        },
+        {
+          "value": "איפה אתה",
+          "type": "contains"
+        }
       ],
       "reply": "מה אתה רוצה?",
       "allowedSources": [
         "972556609260"
       ],
       "webhookUrl": "",
-      "matchType": "startsWith"
+      "context": "",
+      "nextState": "stage2"
+    },
+    {
+      "triggers": [
+        {
+          "value": "מתי אתה מגיע",
+          "type": "contains"
+        }
+      ],
+      "reply": "אני לא יודע העדכן ",
+      "allowedSources": [
+        "972508461164"
+      ],
+      "webhookUrl": "",
+      "context": "",
+      "nextState": ""
+    },
+    {
+      "triggers": [
+        {
+          "value": "אתה צריך כזה",
+          "type": "contains"
+        }
+      ],
+      "reply": "תודה שאת חושבת עלי, אבל לא נראה לי",
+      "allowedSources": [
+        "972508461164"
+      ],
+      "webhookUrl": "",
+      "context": "",
+      "nextState": ""
+    },
+    {
+      "triggers": [
+        {
+          "value": "אני רוצה",
+          "type": "contains"
+        }
+      ],
+      "reply": "אני מבין, בואי נחשוב על זה בערב",
+      "allowedSources": [
+        "972508461164"
+      ],
+      "webhookUrl": "",
+      "context": "",
+      "nextState": ""
     }
   ],
   "forwarding": [
