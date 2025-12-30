@@ -163,6 +163,33 @@ app.get('/api/stats', (req, res) => {
     }
 });
 
+// 🚀 New API for n8n/External: Send Message
+app.post('/api/send-message', async (req, res) => {
+    const { to, message } = req.body;
+
+    if (!to || !message) {
+        return res.status(400).json({ error: 'Missing "to" or "message" in request body' });
+    }
+
+    if (clientStatus !== 'READY') {
+        return res.status(503).json({ error: 'WhatsApp client is not ready' });
+    }
+
+    try {
+        // Format number: ensure it ends with @c.us
+        let chatId = to.includes('@') ? to : `${to}@c.us`;
+
+        await client.sendMessage(chatId, message);
+        logToUI(`📤 הודעה נשלחה חיצונית ל-${to}: ${message}`);
+        updateStats('replied'); // Counts as a bot reply
+
+        res.json({ success: true, message: 'Message sent successfully' });
+    } catch (err) {
+        logToUI(`✗ שגיאה בשליחת הודעה חיצונית: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/logout', async (req, res) => {
     try {
         logToUI('🔄 מתנתק מהמערכת...');

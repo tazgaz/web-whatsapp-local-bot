@@ -26,13 +26,13 @@
           "type": "contains"
         }
       ],
-      "reply": "מה אתה רוצה?",
+      "reply": "מה אתה צריך חמוד?",
       "allowedSources": [
         "972556609260"
       ],
-      "webhookUrl": "http://localhost:5678/webhook/b39b901f-fa6d-4c71-9974-035da01846e2",
+      "webhookUrl": "http://n8n:5678/webhook/b39b901f-fa6d-4c71-9974-035da01846e2",
       "context": "",
-      "nextState": "stage2"
+      "nextState": ""
     },
     {
       "triggers": [
@@ -41,7 +41,7 @@
           "type": "contains"
         }
       ],
-      "reply": "אני לא יודע העדכן ",
+      "reply": "אני עוד לא יודע העדכן ",
       "allowedSources": [
         "972508461164"
       ],
@@ -76,14 +76,6 @@
         "972508461164"
       ],
       "webhookUrl": "",
-      "context": "",
-      "nextState": ""
-    },
-    {
-      "triggers": [],
-      "reply": "",
-      "allowedSources": [],
-      "webhookUrl": "http://127.0.0.1:5678/webhook/b39b901f-fa6d-4c71-9974-035da01846e2",
       "context": "",
       "nextState": ""
     }

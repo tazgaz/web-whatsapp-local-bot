@@ -11,6 +11,7 @@ services:
       - ./config.json:/app/config.json
       - ./stats.json:/app/stats.json
       - ./user_states.json:/app/user_states.json
+      - ./public:/app/public
     environment:
       - NODE_ENV=production
     restart: always
