@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
 const { Client, LocalAuth } = require('whatsapp-web.js');
@@ -12,14 +11,20 @@ const { readJSON, writeJSON } = require('./utils');
 
 const app = express();
 const server = http.createServer(app);
-const io = require('socket.io')(server);
+const io = new Server(server);
 const port = 3000;
 
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(express.static('public'));
 
-let clientStatus = 'INITIALIZING';
-let lastQR = '';
+// Sessions management
+const SESSIONS_FILE = './sessions.json';
+if (!fs.existsSync(SESSIONS_FILE)) {
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(['default'], null, 2));
+}
+
+const activeSessions = {}; // { id: { client, status, qr } }
+const stats = { daily: {}, triggers: {} };
 
 // Stats management
 const STATS_FILE = './stats.json';
@@ -48,95 +53,172 @@ function updateStats(type, trigger = null) {
     }
 }
 
-function logToUI(msg) {
-    console.log(msg);
-    io.emit('log', msg);
+function logToUI(sessionId, msg) {
+    const formattedMsg = `[${sessionId}] ${msg}`;
+    console.log(formattedMsg);
+    io.emit('log', { sessionId, message: msg });
 }
 
-let client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-extensions',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--no-zygote'
-        ]
-    }
-});
+function createClient(sessionId) {
+    if (activeSessions[sessionId]) return activeSessions[sessionId];
 
-function initClient() {
-    logToUI('🚀 מתחיל אתחול דפדפן...');
+    logToUI(sessionId, `🚀 מתחיל אתחול דפדפן עבור ${sessionId}...`);
+
+    const client = new Client({
+        authStrategy: new LocalAuth({ clientId: sessionId }),
+        puppeteer: {
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-extensions',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-zygote'
+            ]
+        }
+    });
+
+    activeSessions[sessionId] = {
+        client,
+        status: 'INITIALIZING',
+        qr: ''
+    };
+
+    io.emit('status', { sessionId, status: 'INITIALIZING' });
 
     client.on('qr', async (qr) => {
-        logToUI('✓ קוד QR התקבל. סרוק מהדפדפן.');
-        lastQR = await QRCode.toDataURL(qr);
-        io.emit('qr', lastQR);
-        clientStatus = 'QR_RECEIVED';
-        io.emit('status', clientStatus);
+        logToUI(sessionId, '✓ קוד QR התקבל. סרוק מהדפדפן.');
+        const qrDataURL = await QRCode.toDataURL(qr);
+        activeSessions[sessionId].qr = qrDataURL;
+        activeSessions[sessionId].status = 'QR_RECEIVED';
+        io.emit('status', { sessionId, status: 'QR_RECEIVED', qr: qrDataURL });
     });
 
     client.on('ready', () => {
-        logToUI('✓ וואטסאפ מוכן לפעולה!');
-        clientStatus = 'READY';
-        io.emit('status', clientStatus);
+        logToUI(sessionId, '✓ וואטסאפ מוכן לפעולה!');
+        activeSessions[sessionId].status = 'READY';
+        activeSessions[sessionId].qr = '';
+        io.emit('status', { sessionId, status: 'READY' });
         initScheduler(client);
     });
 
     client.on('loading_screen', (percent, message) => {
-        logToUI(`טוען: ${percent}% - ${message}`);
-        clientStatus = `LOADING (${percent}%)`;
-        io.emit('status', clientStatus);
+        logToUI(sessionId, `טוען: ${percent}% - ${message}`);
+        activeSessions[sessionId].status = `LOADING (${percent}%)`;
+        io.emit('status', { sessionId, status: activeSessions[sessionId].status });
     });
 
     client.on('authenticated', () => {
-        logToUI('✓ התחברות בוצעה בהצלחה!');
-        clientStatus = 'AUTHENTICATED';
-        io.emit('status', clientStatus);
+        logToUI(sessionId, '✓ התחברות בוצעה בהצלחה!');
+        activeSessions[sessionId].status = 'AUTHENTICATED';
+        io.emit('status', { sessionId, status: 'AUTHENTICATED' });
     });
 
     client.on('auth_failure', (msg) => {
-        logToUI(`✗ שגיאת התחברות: ${msg}`);
-        clientStatus = 'AUTH_FAILURE';
-        io.emit('status', clientStatus);
+        logToUI(sessionId, `✗ שגיאת התחברות: ${msg}`);
+        activeSessions[sessionId].status = 'AUTH_FAILURE';
+        io.emit('status', { sessionId, status: 'AUTH_FAILURE' });
     });
 
     client.on('message', async (msg) => {
-        logToUI(`הודעה נכנסת מ-${msg.from}: ${msg.body}`);
+        logToUI(sessionId, `הודעה נכנסת מ-${msg.from}: ${msg.body}`);
         updateStats('received');
         try {
             await handleMessage(msg, client, (logMsg) => {
-                logToUI(logMsg);
+                logToUI(sessionId, logMsg);
                 if (logMsg.includes('✅ מענה נשלח')) {
                     updateStats('replied');
                 }
             });
         } catch (err) {
-            logToUI(`✗ שגיאה בטיפול בהודעה: ${err.message}`);
+            logToUI(sessionId, `✗ שגיאה בטיפול בהודעה: ${err.message}`);
         }
     });
 
     client.on('disconnected', (reason) => {
-        logToUI(`✗ וואטסאפ התנתק: ${reason}`);
-        clientStatus = 'DISCONNECTED';
-        io.emit('status', clientStatus);
+        logToUI(sessionId, `✗ וואטסאפ התנתק: ${reason}`);
+        activeSessions[sessionId].status = 'DISCONNECTED';
+        io.emit('status', { sessionId, status: 'DISCONNECTED' });
     });
 
     client.initialize().catch(err => {
-        logToUI(`✗ שגיאת אתחול: ${err.message}`);
+        logToUI(sessionId, `✗ שגיאת אתחול: ${err.message}`);
     });
+
+    return activeSessions[sessionId];
 }
 
-initClient();
+// Initialize saved sessions
+const savedSessions = readJSON(SESSIONS_FILE, ['default']);
+savedSessions.forEach(id => createClient(id));
 
 // APIs
+app.get('/api/sessions', (req, res) => {
+    const sessionData = Object.keys(activeSessions).map(id => ({
+        id,
+        status: activeSessions[id].status,
+        qr: activeSessions[id].qr
+    }));
+    res.json(sessionData);
+});
+
+app.post('/api/sessions', (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: 'Session ID is required' });
+
+    // Sanitize the session ID - only allow alphanumeric, underscores, and hyphens
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    if (!sanitizedId) {
+        return res.status(400).json({ error: 'Invalid session ID. Please use English letters, numbers, underscores, or hyphens only.' });
+    }
+
+    if (activeSessions[sanitizedId]) {
+        return res.status(400).json({ error: 'Session already exists' });
+    }
+
+    createClient(sanitizedId);
+
+    // Save to file
+    const sessions = readJSON(SESSIONS_FILE, []);
+    if (!sessions.includes(sanitizedId)) {
+        sessions.push(sanitizedId);
+        writeJSON(SESSIONS_FILE, sessions);
+    }
+
+    res.json({ success: true, id: sanitizedId });
+});
+
+app.delete('/api/sessions/:id', async (req, res) => {
+    const { id } = req.params;
+    if (!activeSessions[id]) return res.status(404).json({ error: 'Session not found' });
+
+    try {
+        await activeSessions[id].client.logout();
+    } catch (e) { }
+
+    delete activeSessions[id];
+
+    const sessions = readJSON(SESSIONS_FILE, []);
+    const updated = sessions.filter(s => s !== id);
+    writeJSON(SESSIONS_FILE, updated);
+
+    res.json({ success: true });
+});
+
 app.get('/api/config', (req, res) => {
     try {
-        const config = readJSON('./config.json', { autoReplies: [], forwarding: [] });
+        const sessionId = req.query.sessionId || 'default';
+        const configPath = `./configs/session-${sessionId}.json`;
+
+        // Create configs directory if it doesn't exist
+        if (!fs.existsSync('./configs')) {
+            fs.mkdirSync('./configs');
+        }
+
+        const config = readJSON(configPath, { autoReplies: [], forwarding: [], scheduledMessages: [] });
         res.json(config);
     } catch (err) {
         res.status(500).json({ error: 'Failed to read config' });
@@ -145,11 +227,23 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/config', (req, res) => {
     try {
-        writeJSON('./config.json', req.body);
-        logToUI('⚙️ הגדרות עודכנו בהצלחה.');
+        const sessionId = req.query.sessionId || req.body.sessionId || 'default';
+        const configPath = `./configs/session-${sessionId}.json`;
+
+        // Create configs directory if it doesn't exist
+        if (!fs.existsSync('./configs')) {
+            fs.mkdirSync('./configs');
+        }
+
+        // Remove sessionId from body if present to avoid saving it
+        const configData = { ...req.body };
+        delete configData.sessionId;
+
+        writeJSON(configPath, configData);
+        logToUI('system', `⚙️ הגדרות עודכנו בהצלחה עבור ${sessionId}.`);
         res.json({ success: true });
     } catch (err) {
-        logToUI(`✗ שגיאה בשליחת הגדרות: ${err.message}`);
+        logToUI('system', `✗ שגיאה בשליחת הגדרות: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
 });
@@ -163,59 +257,73 @@ app.get('/api/stats', (req, res) => {
     }
 });
 
-// 🚀 New API for n8n/External: Send Message
 app.post('/api/send-message', async (req, res) => {
-    const { to, message } = req.body;
+    const { to, message, sessionId } = req.body;
+    const sid = sessionId || 'default';
 
     if (!to || !message) {
         return res.status(400).json({ error: 'Missing "to" or "message" in request body' });
     }
 
-    if (clientStatus !== 'READY') {
-        return res.status(503).json({ error: 'WhatsApp client is not ready' });
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
     }
 
     try {
-        // Format number: ensure it ends with @c.us
         let chatId = to.includes('@') ? to : `${to}@c.us`;
-
-        await client.sendMessage(chatId, message);
-        logToUI(`📤 הודעה נשלחה חיצונית ל-${to}: ${message}`);
-        updateStats('replied'); // Counts as a bot reply
-
+        await session.client.sendMessage(chatId, message);
+        logToUI(sid, `📤 הודעה נשלחה חיצונית ל-${to}: ${message}`);
+        updateStats('replied');
         res.json({ success: true, message: 'Message sent successfully' });
     } catch (err) {
-        logToUI(`✗ שגיאה בשליחת הודעה חיצונית: ${err.message}`);
+        logToUI(sid, `✗ שגיאה בשליחת הודעה חיצונית: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
 });
 
 app.post('/api/logout', async (req, res) => {
+    const { sessionId } = req.body;
+    const sid = sessionId || 'default';
     try {
-        logToUI('🔄 מתנתק מהמערכת...');
-        await client.logout();
-        logToUI('✅ התנתקת בהצלחה.');
+        logToUI(sid, '🔄 מתנתק מהמערכת...');
+        if (activeSessions[sid]) {
+            await activeSessions[sid].client.logout();
+            logToUI(sid, '✅ התנתקת בהצלחה.');
+        }
         res.json({ success: true });
     } catch (err) {
-        logToUI(`✗ שגיאה בהתנתקות: ${err.message}`);
+        logToUI(sid, `✗ שגיאה בהתנתקות: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
 });
 
-app.get('/api/status', (req, res) => {
-    res.json({ status: clientStatus, qr: lastQR });
+app.post('/api/restart', (req, res) => {
+    logToUI('system', '🔄 בקשת ריסטרט התקבלה מה-API. מאתחל את הבוט...');
+    res.json({ success: true, message: 'Restarting bot...' });
+    setTimeout(() => {
+        process.exit(1);
+    }, 1500);
 });
 
 io.on('connection', (socket) => {
-    socket.emit('status', clientStatus);
-    if (lastQR) socket.emit('qr', lastQR);
-    socket.emit('log', '--- מחובר לשרת הניהול ---');
+    // Send current status of all sessions
+    const sessionData = Object.keys(activeSessions).map(id => ({
+        id,
+        status: activeSessions[id].status,
+        qr: activeSessions[id].qr
+    }));
+    socket.emit('init_sessions', sessionData);
+
     try {
         const stats = readJSON(STATS_FILE, { daily: {}, triggers: {} });
         socket.emit('stats_update', stats);
     } catch (e) { }
+
+    socket.emit('log', { sessionId: 'system', message: '--- מחובר לשרת הניהול ---' });
 });
 
 server.listen(port, () => {
     console.log(`UI running at http://localhost:${port}`);
 });
+

@@ -13,15 +13,24 @@ function saveStates() {
 }
 
 async function handleMessage(message, client, logCallback) {
-    const config = readJSON('./config.json', { autoReplies: [], forwarding: [] });
+    const sessionId = client.options.authStrategy.clientId || 'default';
+    const configPath = `./configs/session-${sessionId}.json`;
+    const config = readJSON(configPath, { autoReplies: [], forwarding: [], scheduledMessages: [] });
     const text = message.body.toLowerCase();
     const sender = message.from;
 
-    // Get current user state
-    const currentState = userStates[sender] || '';
+    // Get current user state - specific to this session
+    const stateKey = `${sessionId}_${sender}`;
+    const currentState = userStates[stateKey] || '';
 
     for (const rule of config.autoReplies) {
-        // 1. Check sources
+        // 1. Check sources (Group/Private/Specific IDs)
+        const isGroupMsg = sender.endsWith('@g.us');
+
+        // Filter by type if specified
+        if (rule.isGroupOnly && !isGroupMsg) continue;
+        if (rule.isPrivateOnly && isGroupMsg) continue;
+
         const allowedSources = rule.allowedSources || [];
         if (allowedSources.length > 0) {
             const isAllowed = allowedSources.some(source => sender.includes(source));
@@ -30,8 +39,6 @@ async function handleMessage(message, client, logCallback) {
 
         // 2. State Check (Context)
         const ruleContext = rule.context || '';
-        // If rule has a context, user MUST be in that state.
-        // If rule has no context, anyone can trigger it.
         if (ruleContext !== '' && ruleContext !== currentState) {
             continue;
         }
@@ -78,7 +85,7 @@ async function handleMessage(message, client, logCallback) {
 
                 // Update State for next time
                 if (rule.nextState) {
-                    userStates[sender] = rule.nextState;
+                    userStates[stateKey] = rule.nextState;
                     saveStates();
                     if (logCallback) logCallback(`🔄 המשתמש עבר לשלב: ${rule.nextState}`);
                 }
@@ -88,14 +95,12 @@ async function handleMessage(message, client, logCallback) {
             if (rule.webhookUrl) {
                 if (logCallback) logCallback(`🔗 שולח Webhook לכתובת: ${rule.webhookUrl}`);
                 try {
-                    // Send webhook without fetching full contact details to avoid Puppeteer crashes
-                    const pushname = 'Unknown';
-
                     const response = await axios.post(rule.webhookUrl, {
                         event: 'message_match',
+                        sessionId: sessionId,
                         message: message.body,
                         from: sender,
-                        pushname: pushname,
+                        pushname: 'Unknown',
                         currentState: currentState,
                         nextState: rule.nextState || currentState,
                         timestamp: Date.now()
@@ -110,13 +115,13 @@ async function handleMessage(message, client, logCallback) {
     }
 
     // Forwarding
-    for (const rule of config.forwarding) {
+    for (const rule of config.forwarding || []) {
         if (text.includes(rule.trigger.toLowerCase())) {
             try {
                 const contact = await message.getContact();
-                await client.sendMessage(`${rule.forwardTo}@c.us`, `הודעה מ-${contact.number}: ${message.body}`);
+                await client.sendMessage(`${rule.forwardTo}@c.us`, `[${sessionId}] הודעה מ-${contact.number}: ${message.body}`);
             } catch (err) {
-                await client.sendMessage(`${rule.forwardTo}@c.us`, `הודעה מ-${sender}: ${message.body}`);
+                await client.sendMessage(`${rule.forwardTo}@c.us`, `[${sessionId}] הודעה מ-${sender}: ${message.body}`);
             }
             return;
         }
