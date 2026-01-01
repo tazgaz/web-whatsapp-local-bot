@@ -396,6 +396,7 @@
                 <div class="nav-tab active" onclick="switchTab('automation')">💬 אוטומציה</div>
                 <div class="nav-tab" onclick="switchTab('dashboard')">📊 דשבורד</div>
                 <div class="nav-tab" onclick="switchTab('logs')">📜 יומן פעילות</div>
+                <div class="nav-tab" onclick="switchTab('send-message')">📤 שליחת הודעה</div>
             </div>
 
             <!-- Automation Tab -->
@@ -440,11 +441,75 @@
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <h2>יומן פעילויות אחרונות</h2>
-                        <button onclick="clearLogs()"
-                            style="font-size: 0.8rem; background: none; border: 1px solid #ccc; padding: 5px 10px; border-radius: 5px; cursor: pointer;">נקה
-                            יומן</button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="log-filter" onchange="filterLogs()"
+                                style="border: 1px solid #ccc; padding: 5px; border-radius: 5px; font-family: inherit;">
+                                <option value="all">הצג הכל</option>
+                            </select>
+                            <button onclick="clearLogs()"
+                                style="font-size: 0.8rem; background: none; border: 1px solid #ccc; padding: 5px 10px; border-radius: 5px; cursor: pointer;">נקה
+                                יומן</button>
+                        </div>
                     </div>
                     <pre id="logs"></pre>
+                </div>
+            </div>
+
+            <!-- Send Message Tab -->
+            <!-- Send Message Tab -->
+            <div id="send-message-section" class="section">
+                <div class="main-grid">
+                    <div class="card">
+                        <h2>📤 שליחת הודעה ידנית</h2>
+                        <p style="margin-bottom: 20px; color: #64748b;">שולח מהחשבון: <strong id="send-from-indicator"
+                                style="color: var(--primary);">בחר חשבון</strong></p>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:bold;">מספר טלפון (למשל
+                                97250...):</label>
+                            <input type="text" id="manual-msg-to" placeholder="972501234567">
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <label style="display:block; margin-bottom:5px; font-weight:bold;">הודעה:</label>
+                            <textarea id="manual-msg-content" rows="4" placeholder="הקלד את ההודעה כאן..."></textarea>
+                        </div>
+
+                        <button onclick="sendManualMessage()" class="btn-save" style="background: var(--accent);">שלח
+                            הודעה
+                            🚀</button>
+                    </div>
+
+                    <div class="card">
+                        <h2>🔌 תיעוד API</h2>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 15px;">
+                            ניתן לשלוח הודעות דרך ה-API החיצוני באמצעות בקשת HTTP POST.
+                            הנה דוגמה לקוד עבור החשבון הנוכחי:
+                        </p>
+
+                        <div style="background: #1e293b; padding: 15px; border-radius: 10px; position: relative;">
+                            <button onclick="copyApiExample()"
+                                style="position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.1); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">העתק</button>
+                            <pre id="api-code-block"
+                                style="margin: 0; color: #a5b4fc; white-space: pre-wrap; direction: ltr; font-family: Consolas, monospace; font-size: 0.85rem;">
+curl -X POST http://localhost:3000/api/send-message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "<span id="api-session-id">default</span>",
+    "to": "972501234567",
+    "message": "Hello World!"
+  }'</pre>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <h3>פרמטרים:</h3>
+                            <ul style="font-size: 0.9rem; color: #334155; line-height: 1.6;">
+                                <li><code>sessionId</code> - מזהה החשבון (חובה לשליחה מחשבון ספציפי)</li>
+                                <li><code>to</code> - מספר טלפון בפורמט בינלאומי (ללא +)</li>
+                                <li><code>message</code> - תוכן ההודעה</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -503,6 +568,8 @@
             const ids = Object.keys(sessions);
             document.getElementById('total-sessions').innerText = ids.length;
 
+            updateLogFilterOptions(ids);
+
             ids.forEach(id => {
                 const s = sessions[id];
                 const item = document.createElement('div');
@@ -520,14 +587,93 @@
             });
         }
 
+        function updateLogFilterOptions(ids) {
+            const select = document.getElementById('log-filter');
+            if (!select) return;
+
+            const currentVal = select.value;
+            select.innerHTML = '<option value="all">הצג הכל</option>';
+
+            ids.forEach(id => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.innerText = id;
+                if (id === currentVal) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+
+        function filterLogs() {
+            const filter = document.getElementById('log-filter').value;
+            const entries = document.querySelectorAll('.log-entry');
+
+            entries.forEach(entry => {
+                if (filter === 'all') {
+                    entry.style.display = 'block';
+                } else {
+                    entry.style.display = entry.dataset.sessionId === filter ? 'block' : 'none';
+                }
+            });
+        }
+
         function selectSession(id) {
             selectedSessionId = id;
             document.getElementById('active-session-indicator').innerText = id;
             const configSessionName = document.getElementById('config-session-name');
             if (configSessionName) configSessionName.innerText = id;
+            const sendFromIndicator = document.getElementById('send-from-indicator');
+            if (sendFromIndicator) sendFromIndicator.innerText = id;
+            const apiSessionId = document.getElementById('api-session-id');
+            if (apiSessionId) apiSessionId.innerText = id;
+
             renderSessionList();
             updateUIForSession(sessions[id]);
             loadConfig(); // Load config for this session
+        }
+
+        async function sendManualMessage() {
+            if (!selectedSessionId) {
+                alert('אנא בחר חשבון ממנו תרצה לשלוח הודעה (בסרגל הצד).');
+                return;
+            }
+
+            const to = document.getElementById('manual-msg-to').value.trim();
+            const message = document.getElementById('manual-msg-content').value.trim();
+
+            if (!to || !message) {
+                alert('נא למלא מספר טלפון ותוכן הודעה.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/send-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: selectedSessionId,
+                        to: to,
+                        message: message
+                    })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('✅ הודעה נשלחה בהצלחה!');
+                    document.getElementById('manual-msg-content').value = '';
+                } else {
+                    alert('❌ שגיאה: ' + (data.error || 'שגיאה לא ידועה'));
+                }
+            } catch (err) {
+                alert('❌ שגיאה בתקשורת: ' + err.message);
+            }
+        }
+
+        function copyApiExample() {
+            const code = document.getElementById('api-code-block').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('הקוד הועתק ללוח!');
+            });
         }
 
         function updateUIForSession(s) {
