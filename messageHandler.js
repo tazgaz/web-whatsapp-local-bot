@@ -19,12 +19,24 @@ async function handleMessage(message, client, sessionId, logCallback) {
     const sender = message.from;
 
     // Get current user state - specific to this session
-    const stateKey = `${sessionId}_${sender}`;
+    // If outgoing, context is typically 'self' or target, but we'll use 'to' for state tracking if it's an outgoing message to keep conversation state
+    // But for simplicity, we keep tracking based on the "other party" (from if incoming, to if outgoing)
+    const otherParty = message.fromMe ? message.to : message.from;
+    const stateKey = `${sessionId}_${otherParty}`;
     const currentState = userStates[stateKey] || '';
 
     for (const rule of config.autoReplies) {
+        // 0. Check Trigger Direction (Incoming/Outgoing)
+        // Values: 'incoming' (default), 'outgoing', 'both'
+        const triggerOn = rule.triggerOn || 'incoming';
+        const isFromMe = message.fromMe;
+
+        if (triggerOn === 'incoming' && isFromMe) continue;
+        if (triggerOn === 'outgoing' && !isFromMe) continue;
+
         // 1. Check sources (Group/Private/Specific IDs)
-        const isGroupMsg = sender.endsWith('@g.us');
+        // Use otherParty to identify the source/destination context
+        const isGroupMsg = otherParty.endsWith('@g.us');
 
         // Filter by type if specified
         if (rule.isGroupOnly && !isGroupMsg) continue;
@@ -32,7 +44,7 @@ async function handleMessage(message, client, sessionId, logCallback) {
 
         const allowedSources = rule.allowedSources || [];
         if (allowedSources.length > 0) {
-            const isAllowed = allowedSources.some(source => sender.includes(source));
+            const isAllowed = allowedSources.some(source => otherParty.includes(source));
             if (!isAllowed) continue;
         }
 
@@ -79,7 +91,8 @@ async function handleMessage(message, client, sessionId, logCallback) {
         if (isMatched) {
             // Reply
             if (rule.reply) {
-                await client.sendMessage(sender, rule.reply);
+                // If I triggered it (outgoing), reply to the chat (otherParty). If incoming, reply to sender (which is otherParty).
+                await client.sendMessage(otherParty, rule.reply);
                 if (logCallback) logCallback(`✅ מענה נשלח בהצלחה: "${rule.reply}" (מצב נוכחי: ${currentState || 'התחלה'})`);
 
                 // Update State for next time

@@ -803,12 +803,13 @@ curl -X POST http://localhost:3000/api/send-message \
                     rule.context || '',
                     rule.isGroupOnly || false,
                     rule.isPrivateOnly || false,
-                    rule.description || ''
+                    rule.description || '',
+                    rule.triggerOn || 'incoming'
                 );
             });
         }
 
-        function addNewRule(triggers = [], reply = '', sources = [], webhook = '', nextState = '', context = '', isGroupOnly = false, isPrivateOnly = false, description = '') {
+        function addNewRule(triggers = [], reply = '', sources = [], webhook = '', nextState = '', context = '', isGroupOnly = false, isPrivateOnly = false, description = '', triggerOn = 'incoming') {
             const card = document.createElement('div');
             card.className = 'auto-reply-card';
             card.innerHTML = `
@@ -834,6 +835,15 @@ curl -X POST http://localhost:3000/api/send-message \
                             <input type="text" placeholder="הוסף מילה.." style="border:none; background:transparent; outline:none; font-size:0.8rem; flex-grow:1;" onkeydown="addTriggerTag(event, this)">
                         </div>
                     </div>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <span style="font-size:0.85rem; font-weight:bold;">⏰ מתי להפעיל?</span>
+                    <select class="rule-trigger-on-select" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: #fdfdfd; margin-top: 5px;">
+                        <option value="incoming" ${triggerOn === 'incoming' ? 'selected' : ''}>הודעה נכנסת (רגיל)</option>
+                        <option value="outgoing" ${triggerOn === 'outgoing' ? 'selected' : ''}>הודעה יוצאת (שאני שלחתי)</option>
+                        <option value="both" ${triggerOn === 'both' ? 'selected' : ''}>שתיהן</option>
+                    </select>
                 </div>
 
                 <div style="margin-bottom:10px;">
@@ -929,6 +939,9 @@ curl -X POST http://localhost:3000/api/send-message \
                 const isGroupOnly = typeSelect ? typeSelect.value === 'groups' : false;
                 const isPrivateOnly = typeSelect ? typeSelect.value === 'private' : false;
 
+                const triggerOnSelect = card.querySelector('.rule-trigger-on-select');
+                const triggerOn = triggerOnSelect ? triggerOnSelect.value : 'incoming';
+
                 const description = card.querySelector('.rule-description')?.value || '';
 
                 newReplies.push({
@@ -940,7 +953,8 @@ curl -X POST http://localhost:3000/api/send-message \
                     nextState: card.querySelector('.next-state').value,
                     allowedSources: sources,
                     isGroupOnly,
-                    isPrivateOnly
+                    isPrivateOnly,
+                    triggerOn
                 });
             });
 

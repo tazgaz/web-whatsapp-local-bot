@@ -122,9 +122,14 @@ function createClient(sessionId) {
         io.emit('status', { sessionId, status: 'AUTH_FAILURE' });
     });
 
-    client.on('message', async (msg) => {
-        logToUI(sessionId, `הודעה נכנסת מ-${msg.from}: ${msg.body}`);
-        updateStats('received');
+    client.on('message_create', async (msg) => {
+        // Prevent bot from replying to its own automated messages (infinite loop safety)
+        // If the message has the same body as a recent reply, or if it was sent via code (though harder to detect solely by flags)
+        // ideally handleMessage logic will filter based on rules. 
+
+        logToUI(sessionId, `הודעה ${msg.fromMe ? 'יוצאת אל' : 'נכנסת מ'}-${msg.fromMe ? msg.to : msg.from}: ${msg.body}`);
+        if (!msg.fromMe) updateStats('received'); // Only count incoming as 'received' stats
+
         try {
             await handleMessage(msg, client, sessionId, (logMsg) => {
                 logToUI(sessionId, logMsg);
