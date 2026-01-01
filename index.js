@@ -126,7 +126,7 @@ function createClient(sessionId) {
         logToUI(sessionId, `הודעה נכנסת מ-${msg.from}: ${msg.body}`);
         updateStats('received');
         try {
-            await handleMessage(msg, client, (logMsg) => {
+            await handleMessage(msg, client, sessionId, (logMsg) => {
                 logToUI(sessionId, logMsg);
                 if (logMsg.includes('✅ מענה נשלח')) {
                     updateStats('replied');

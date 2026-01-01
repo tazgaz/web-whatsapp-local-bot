@@ -12,8 +12,7 @@ function saveStates() {
     writeJSON(STATES_FILE, userStates);
 }
 
-async function handleMessage(message, client, logCallback) {
-    const sessionId = client.options.authStrategy.clientId || 'default';
+async function handleMessage(message, client, sessionId, logCallback) {
     const configPath = `./configs/session-${sessionId}.json`;
     const config = readJSON(configPath, { autoReplies: [], forwarding: [], scheduledMessages: [] });
     const text = message.body.toLowerCase();

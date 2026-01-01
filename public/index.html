@@ -643,7 +643,8 @@
 
         async function loadConfig() {
             if (!selectedSessionId) return;
-            const res = await fetch(`/api/config?sessionId=${selectedSessionId}`);
+            // Add timestamp to prevent caching
+            const res = await fetch(`/api/config?sessionId=${selectedSessionId}&t=${Date.now()}`);
             const config = await res.json();
             rulesContainer.innerHTML = '';
             (config.autoReplies || []).forEach(rule => {
