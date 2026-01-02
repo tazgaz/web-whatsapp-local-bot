@@ -142,6 +142,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-direction: row-reverse;
+            /* Ensure brand is on left, actions on right */
         }
 
         .container {
@@ -356,11 +358,17 @@
         }
 
         .session-badge {
-            background: #e2e8f0;
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 0.8rem;
+            background: var(--secondary);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 1.1rem;
             font-weight: bold;
+            box-shadow: 0 4px 15px rgba(18, 140, 126, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
         }
 
         .logo-svg {
@@ -394,17 +402,26 @@
     <div class="main-content">
         <header>
             <div style="display: flex; align-items: center; gap: 15px;">
-                <h1 style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
-                    <svg class="logo-svg" viewBox="0 0 24 24" fill="var(--primary)" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <h1
+                    style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; direction: ltr;">
+                    <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path
                             d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
                         </path>
                     </svg>
-                    Shargo WhatsApp Bot
+                    <span
+                        style="font-family: 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: 1px;">Shargo</span>
+                    WhatsApp Bot
                 </h1>
-                <div id="active-session-indicator" class="session-badge">בחר חשבון</div>
             </div>
+
+            <!-- Prominent Session Indicator -->
+            <div id="active-session-indicator" class="session-badge">
+                <span style="font-size: 1.3rem;">🤖</span>
+                <span id="header-session-name">בחר חשבון</span>
+            </div>
+
             <div class="header-actions">
                 <button onclick="logoutCurrent()"
                     style="background:transparent; color:var(--danger); border:1px solid var(--danger); padding:8px 16px; border-radius:10px; cursor:pointer; font-weight:bold;">התנתק</button>
@@ -608,11 +625,48 @@ curl -X POST http://localhost:3000/api/send-message \
                     (s.status.includes('LOADING') ? 'status-loading' : 'status-error');
 
                 item.innerHTML = `
-                    <span class="session-name">${id}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="session-name">${id}</span>
+                        <div style="display:flex; gap:5px;">
+                            <span onclick="renameSession('${id}', event)" style="font-size:1.1rem; padding: 5px; cursor: pointer; color:#3b82f6;" title="שנה שם">✏️</span>
+                        </div>
+                    </div>
                     <span class="session-status"><span class="status-dot ${statusClass}"></span> ${translateStatus(s.status)}</span>
                 `;
                 sessionListEl.appendChild(item);
             });
+        }
+
+        async function renameSession(oldId, event) {
+            event.stopPropagation(); // Prevent selecting the session
+            const newId = prompt(`הכנס שם חדש עבור "${oldId}":\n(אותיות באנגלית, מספרים, - או _)`);
+
+            if (newId && newId !== oldId) {
+                // Basic validation
+                if (!/^[a-zA-Z0-9_-]+$/.test(newId)) {
+                    alert('שם לא חוקי. אנא השתמש רק באותיות באנגלית, מספרים, מקף או קו תחתון.');
+                    return;
+                }
+
+                if (confirm(`האם לשנות את שם החשבון מ-${oldId} ל-${newId}?\nהפעולה תאתחל את החשבון.`)) {
+                    const res = await fetch('/api/sessions/rename', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ oldId, newId })
+                    });
+
+                    if (res.ok) {
+                        alert(`שם החשבון שונה בהצלחה ל-${newId}!`);
+                        if (selectedSessionId === oldId) {
+                            selectedSessionId = null; // Force re-select or wait for update
+                            document.getElementById('active-session-indicator').innerHTML = '<span style="font-size: 1.3rem;">🤖</span> <span id="header-session-name">בחר חשבון</span>';
+                        }
+                    } else {
+                        const err = await res.json();
+                        alert('שגיאה: ' + err.error);
+                    }
+                }
+            }
         }
 
         function updateLogFilterOptions(ids) {
@@ -646,7 +700,9 @@ curl -X POST http://localhost:3000/api/send-message \
 
         function selectSession(id) {
             selectedSessionId = id;
-            document.getElementById('active-session-indicator').innerText = id;
+            // Update the text span inside the badge, preserving the icon
+            const indicatorText = document.getElementById('header-session-name');
+            if (indicatorText) indicatorText.innerText = id;
             const configSessionName = document.getElementById('config-session-name');
             if (configSessionName) configSessionName.innerText = id;
             const sendFromIndicator = document.getElementById('send-from-indicator');

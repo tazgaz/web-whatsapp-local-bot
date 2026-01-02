@@ -213,6 +213,67 @@ app.delete('/api/sessions/:id', async (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/sessions/rename', async (req, res) => {
+    const { oldId, newId } = req.body;
+
+    if (!oldId || !newId) return res.status(400).json({ error: 'Missing oldId or newId' });
+    if (!activeSessions[oldId]) return res.status(404).json({ error: 'Session not found' });
+    if (activeSessions[newId]) return res.status(409).json({ error: 'New session ID already exists' });
+
+    try {
+        logToUI(oldId, `🔄 משנה שם לחשבון מ-${oldId} ל-${newId}...`);
+
+        // 1. Destroy old client
+        try {
+            await activeSessions[oldId].client.destroy();
+        } catch (e) {
+            console.error('Error destroying client:', e);
+        }
+        delete activeSessions[oldId];
+
+        // 2. Rename Auth Folder
+        const oldAuthPath = path.join(__dirname, '.wwebjs_auth', `session-${oldId}`);
+        const newAuthPath = path.join(__dirname, '.wwebjs_auth', `session-${newId}`);
+        if (fs.existsSync(oldAuthPath)) {
+            fs.renameSync(oldAuthPath, newAuthPath);
+        }
+
+        // 3. Rename Config File
+        const oldConfigPath = path.join(__dirname, 'configs', `session-${oldId}.json`);
+        const newConfigPath = path.join(__dirname, 'configs', `session-${newId}.json`);
+        if (fs.existsSync(oldConfigPath)) {
+            fs.renameSync(oldConfigPath, newConfigPath);
+        }
+
+        // 4. Update Sessions List
+        const sessions = readJSON(SESSIONS_FILE, []);
+        const updatedSessions = sessions.map(s => s === oldId ? newId : s);
+        writeJSON(SESSIONS_FILE, updatedSessions);
+
+        // 5. Update User States (Optional but good practice)
+        const STATES_FILE = './user_states.json';
+        const userStates = readJSON(STATES_FILE, {});
+        const newUserStates = {};
+        Object.keys(userStates).forEach(key => {
+            if (key.startsWith(`${oldId}_`)) {
+                const newKey = key.replace(`${oldId}_`, `${newId}_`);
+                newUserStates[newKey] = userStates[key];
+            } else {
+                newUserStates[key] = userStates[key];
+            }
+        });
+        writeJSON(STATES_FILE, newUserStates);
+
+        // 6. Initialize New Session
+        startSession(newId);
+
+        res.json({ success: true });
+    } catch (err) {
+        logToUI(oldId, `✗ שגיאה בשינוי שם: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/config', (req, res) => {
     try {
         const sessionId = req.query.sessionId || 'default';
