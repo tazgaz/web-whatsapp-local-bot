@@ -362,6 +362,18 @@
             font-size: 0.8rem;
             font-weight: bold;
         }
+
+        .logo-svg {
+            width: 40px;
+            height: 40px;
+            vertical-align: middle;
+            transition: transform 0.5s ease-in-out;
+            margin-left: 10px;
+        }
+
+        .logo-svg:hover {
+            transform: rotate(360deg);
+        }
     </style>
 </head>
 
@@ -382,7 +394,15 @@
     <div class="main-content">
         <header>
             <div style="display: flex; align-items: center; gap: 15px;">
-                <h1 style="margin: 0; font-size: 1.5rem;">WhatsApp Auto 🤖</h1>
+                <h1 style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                    <svg class="logo-svg" viewBox="0 0 24 24" fill="var(--primary)" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                        </path>
+                    </svg>
+                    Shargo WhatsApp Bot
+                </h1>
                 <div id="active-session-indicator" class="session-badge">בחר חשבון</div>
             </div>
             <div class="header-actions">
