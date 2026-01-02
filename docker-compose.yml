@@ -14,6 +14,10 @@ services:
       - ./sessions.json:/app/sessions.json
       - ./configs:/app/configs
       - ./public:/app/public
+      - ./index.js:/app/index.js
+      - ./messageHandler.js:/app/messageHandler.js
+      - ./scheduler.js:/app/scheduler.js
+      - ./utils.js:/app/utils.js
     environment:
       - NODE_ENV=production
     restart: always

@@ -1,13 +1,38 @@
 {
-  "daily": {
-    "2025-12-29": {
-      "received": 26,
-      "replied": 8
+  "sessions": {
+    "Raz": {
+      "daily": {
+        "2025-12-29": {
+          "received": 26,
+          "replied": 8
+        },
+        "2025-12-30": {
+          "received": 183,
+          "replied": 49
+        },
+        "2025-12-31": {
+          "received": 291,
+          "replied": 16
+        },
+        "2026-01-01": {
+          "received": 279,
+          "replied": 5
+        },
+        "2026-01-02": {
+          "received": 1,
+          "replied": 0
+        }
+      },
+      "triggers": {}
     },
-    "2025-12-30": {
-      "received": 1,
-      "replied": 1
+    "dean": {
+      "daily": {
+        "2026-01-02": {
+          "received": 1,
+          "replied": 0
+        }
+      },
+      "triggers": {}
     }
-  },
-  "triggers": {}
+  }
 }

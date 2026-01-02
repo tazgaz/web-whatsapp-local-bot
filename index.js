@@ -24,26 +24,43 @@ if (!fs.existsSync(SESSIONS_FILE)) {
 }
 
 const activeSessions = {}; // { id: { client, status, qr } }
-const stats = { daily: {}, triggers: {} };
 
 // Stats management
 const STATS_FILE = './stats.json';
 if (!fs.existsSync(STATS_FILE)) {
-    fs.writeFileSync(STATS_FILE, JSON.stringify({ daily: {}, triggers: {} }, null, 2));
+    fs.writeFileSync(STATS_FILE, JSON.stringify({ sessions: {} }, null, 2));
 }
 
-function updateStats(type, trigger = null) {
+// Migration helper
+function getStats() {
+    const stats = readJSON(STATS_FILE, { sessions: {} });
+    if (!stats.sessions) stats.sessions = {};
+
+    // Migrate old format if exists
+    if (stats.daily) {
+        if (!stats.sessions.default) stats.sessions.default = { daily: stats.daily, triggers: stats.triggers || {} };
+        delete stats.daily;
+        delete stats.triggers;
+        writeJSON(STATS_FILE, stats);
+    }
+    return stats;
+}
+
+function updateStats(sessionId, type, trigger = null) {
     try {
-        const stats = readJSON(STATS_FILE, { daily: {}, triggers: {} });
+        const stats = getStats();
+        if (!stats.sessions[sessionId]) stats.sessions[sessionId] = { daily: {}, triggers: {} };
+
+        const sessionStats = stats.sessions[sessionId];
         const today = new Date().toISOString().split('T')[0];
 
-        if (!stats.daily[today]) stats.daily[today] = { received: 0, replied: 0 };
+        if (!sessionStats.daily[today]) sessionStats.daily[today] = { received: 0, replied: 0 };
 
-        if (type === 'received') stats.daily[today].received++;
-        if (type === 'replied') stats.daily[today].replied++;
+        if (type === 'received') sessionStats.daily[today].received++;
+        if (type === 'replied') sessionStats.daily[today].replied++;
 
         if (trigger) {
-            stats.triggers[trigger] = (stats.triggers[trigger] || 0) + 1;
+            sessionStats.triggers[trigger] = (sessionStats.triggers[trigger] || 0) + 1;
         }
 
         writeJSON(STATS_FILE, stats);
@@ -56,6 +73,19 @@ function updateStats(type, trigger = null) {
 function logToUI(sessionId, msg) {
     const formattedMsg = `[${sessionId}] ${msg}`;
     console.log(formattedMsg);
+
+    // Save to file
+    try {
+        const logsDir = path.join(__dirname, 'logs');
+        if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
+
+        const logFile = path.join(logsDir, `session-${sessionId}.log`);
+        const timestamp = new Date().toLocaleString('he-IL');
+        fs.appendFileSync(logFile, `[${timestamp}] ${msg}\n`);
+    } catch (err) {
+        console.error('Error saving log:', err);
+    }
+
     io.emit('log', { sessionId, message: msg });
 }
 
@@ -85,6 +115,20 @@ function startSession(sessionId) {
         status: 'INITIALIZING',
         qr: ''
     };
+
+    // Watchdog Timer: Protect against 99% Stuck Issues
+    // If not ready/QR within 3 minutes, force restart
+    setTimeout(async () => {
+        const s = activeSessions[sessionId];
+        if (s && (s.status.startsWith('LOADING') || s.status === 'INITIALIZING')) {
+            logToUI(sessionId, '⚠️ זוהתה תקיעה בטעינה (Watchdog). מבצע אתחול אוטומטי...');
+            try {
+                await s.client.destroy();
+            } catch (e) { }
+            delete activeSessions[sessionId];
+            startSession(sessionId); // Retry
+        }
+    }, 180000); // 3 Minutes
 
     io.emit('status', { sessionId, status: 'INITIALIZING' });
 
@@ -128,15 +172,16 @@ function startSession(sessionId) {
         // ideally handleMessage logic will filter based on rules. 
 
         logToUI(sessionId, `הודעה ${msg.fromMe ? 'יוצאת אל' : 'נכנסת מ'}-${msg.fromMe ? msg.to : msg.from}: ${msg.body}`);
-        if (!msg.fromMe) updateStats('received'); // Only count incoming as 'received' stats
+        if (!msg.fromMe) updateStats(sessionId, 'received'); // Only count incoming as 'received' stats
 
         try {
-            await handleMessage(msg, client, sessionId, (logMsg) => {
+            const result = await handleMessage(msg, client, sessionId, (logMsg) => {
                 logToUI(sessionId, logMsg);
-                if (logMsg.includes('✅ מענה נשלח')) {
-                    updateStats('replied');
-                }
             });
+
+            if (result && result.replied) {
+                updateStats(sessionId, 'replied', result.trigger);
+            }
         } catch (err) {
             logToUI(sessionId, `✗ שגיאה בטיפול בהודעה: ${err.message}`);
         }
@@ -245,6 +290,13 @@ app.post('/api/sessions/rename', async (req, res) => {
             fs.renameSync(oldConfigPath, newConfigPath);
         }
 
+        // 3.5 Rename Log File
+        const oldLogFile = path.join(__dirname, 'logs', `session-${oldId}.log`);
+        const newLogFile = path.join(__dirname, 'logs', `session-${newId}.log`);
+        if (fs.existsSync(oldLogFile)) {
+            fs.renameSync(oldLogFile, newLogFile);
+        }
+
         // 4. Update Sessions List
         const sessions = readJSON(SESSIONS_FILE, []);
         const updatedSessions = sessions.map(s => s === oldId ? newId : s);
@@ -316,10 +368,28 @@ app.post('/api/config', (req, res) => {
 
 app.get('/api/stats', (req, res) => {
     try {
-        const stats = readJSON(STATS_FILE, { daily: {}, triggers: {} });
+        const stats = getStats();
         res.json(stats);
     } catch (err) {
         res.status(500).json({ error: 'Failed to read stats' });
+    }
+});
+
+app.get('/api/logs', (req, res) => {
+    const { sessionId } = req.query;
+    if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
+
+    const logFile = path.join(__dirname, 'logs', `session-${sessionId}.log`);
+    if (!fs.existsSync(logFile)) {
+        return res.json({ logs: [] });
+    }
+
+    try {
+        const content = fs.readFileSync(logFile, 'utf8');
+        const lines = content.trim().split('\n').slice(-100); // Send last 100 lines
+        res.json({ logs: lines });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to read logs' });
     }
 });
 
@@ -340,7 +410,7 @@ app.post('/api/send-message', async (req, res) => {
         let chatId = to.includes('@') ? to : `${to}@c.us`;
         await session.client.sendMessage(chatId, message);
         logToUI(sid, `📤 הודעה נשלחה חיצונית ל-${to}: ${message}`);
-        updateStats('replied');
+        updateStats(sid, 'replied');
         res.json({ success: true, message: 'Message sent successfully' });
     } catch (err) {
         logToUI(sid, `✗ שגיאה בשליחת הודעה חיצונית: ${err.message}`);
@@ -382,7 +452,7 @@ io.on('connection', (socket) => {
     socket.emit('init_sessions', sessionData);
 
     try {
-        const stats = readJSON(STATS_FILE, { daily: {}, triggers: {} });
+        const stats = getStats();
         socket.emit('stats_update', stats);
     } catch (e) { }
 

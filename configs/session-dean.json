@@ -1,15 +1,16 @@
 {
   "autoReplies": [
     {
-      "description": "שלום",
+      "description": "",
       "triggers": [],
       "reply": "",
-      "webhookUrl": "",
+      "webhookUrl": "http://n8n:5678/webhook/57fb14bc-d8f5-466e-b4ab-cade73755261",
       "context": "",
       "nextState": "",
       "allowedSources": [],
       "isGroupOnly": false,
-      "isPrivateOnly": false
+      "isPrivateOnly": false,
+      "triggerOn": "both"
     }
   ],
   "forwarding": [],

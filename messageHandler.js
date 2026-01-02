@@ -144,7 +144,7 @@ async function handleMessage(message, client, sessionId, logCallback) {
                     if (logCallback) logCallback(`✗ שגיאה בשליחת Webhook: ${err.message}`);
                 }
             }
-            return;
+            return { replied: !!rule.reply, trigger: rule.description || (triggers[0]?.value || 'כללי') };
         }
     }
 
@@ -157,9 +157,10 @@ async function handleMessage(message, client, sessionId, logCallback) {
             } catch (err) {
                 await client.sendMessage(`${rule.forwardTo}@c.us`, `[${sessionId}] הודעה מ-${sender}: ${message.body}`);
             }
-            return;
+            return { replied: false };
         }
     }
+    return { replied: false };
 }
 
 module.exports = { handleMessage };

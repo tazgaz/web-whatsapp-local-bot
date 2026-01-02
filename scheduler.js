@@ -1,14 +1,20 @@
 const cron = require('node-cron');
-const config = require('./config.json');
+const { readJSON } = require('./utils');
 
 function initScheduler(client) {
+    const sessionId = client.options.authStrategy.clientId || 'default';
+    const configPath = `./configs/session-${sessionId}.json`;
+    const config = readJSON(configPath, { scheduledMessages: [] });
+
+    if (!config.scheduledMessages) return;
+
     config.scheduledMessages.forEach((task) => {
         cron.schedule(task.cron, async () => {
             try {
-                console.log(`Sending scheduled message to ${task.to}: ${task.message}`);
+                console.log(`[${sessionId}] Sending scheduled message to ${task.to}: ${task.message}`);
                 await client.sendMessage(`${task.to}@c.us`, task.message);
             } catch (err) {
-                console.error(`Failed to send scheduled message:`, err);
+                console.error(`[${sessionId}] Failed to send scheduled message:`, err);
             }
         });
     });

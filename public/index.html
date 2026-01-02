@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shargo WhatsApp Bot | Control Center</title>
+    <link rel="icon" type="image/png" href="favicon.png">
     <link
         href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <style>
         :root {
@@ -185,8 +187,10 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-y: auto;
             background: radial-gradient(circle at top right, rgba(6, 182, 212, 0.05), transparent 400px);
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
         }
 
         header {
@@ -198,16 +202,67 @@
             justify-content: space-between;
             align-items: center;
             flex-direction: row-reverse;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .container {
-            flex-grow: 1;
             padding: 30px;
-            overflow-y: auto;
             max-width: 1200px;
             margin: 0 auto;
             width: 100%;
             box-sizing: border-box;
+        }
+
+        /* Dashboard Highlights */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-info .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'Rajdhani', sans-serif;
+            color: #fff;
+            display: block;
+        }
+
+        .stat-info .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
         }
 
         .nav-tabs {
@@ -399,6 +454,18 @@
             transform: scale(1.1);
         }
 
+        .logo-svg {
+            width: 35px;
+            height: 35px;
+            transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 0 10px var(--primary-glow));
+            fill: rgba(6, 182, 212, 0.1);
+        }
+
+        .logo-svg:hover {
+            transform: rotate(180deg);
+        }
+
         .tags-container {
             display: flex;
             flex-wrap: wrap;
@@ -450,6 +517,12 @@
             transition: all 0.2s;
         }
 
+        select option {
+            background-color: #0f172a !important;
+            /* Slate-900 */
+            color: #ffffff !important;
+        }
+
         input:focus,
         textarea:focus,
         select:focus {
@@ -457,6 +530,10 @@
             border-color: var(--primary);
             box-shadow: 0 0 10px var(--primary-glow);
             background: rgba(6, 182, 212, 0.05);
+        }
+
+        select {
+            cursor: pointer;
         }
 
         .btn-add {
@@ -498,26 +575,25 @@
             filter: brightness(1.1);
         }
 
-        <style>
-
-        /* ... existing styles ... */
         .btn-logout {
-            background: transparent;
+            background: rgba(239, 68, 68, 0.05);
             color: var(--danger);
             border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 8px 20px;
+            padding: 8px 18px;
             border-radius: 10px;
             cursor: pointer;
             font-weight: 700;
             font-family: 'Rajdhani', sans-serif;
             text-transform: uppercase;
             transition: all 0.3s;
+            letter-spacing: 0.5px;
         }
 
         .btn-logout:hover {
             background: var(--danger);
             color: white;
             box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+            transform: translateY(-1px);
         }
     </style>
 </head>
@@ -526,37 +602,42 @@
     <!-- Sidebar for sessions -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h2>חשבונות פעילים</h2>
+            <h2 style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="users" style="width: 18px; color: var(--primary);"></i> חשבונות פעילים
+            </h2>
             <div id="total-sessions" class="session-badge" style="padding: 4px 12px; font-size: 0.9rem;">0</div>
         </div>
         <div class="session-list" id="session-list">
             <!-- Sessions will be injected here -->
         </div>
         <button class="btn-add-session" onclick="promptAddSession()">
-            <span style="font-size: 1.2rem;">+</span> הוסף חשבון חדש
+            <i data-lucide="plus" style="width: 20px;"></i> הוסף חשבון חדש
         </button>
     </div>
 
     <!-- Main Content -->
     <div class="main-content">
         <header>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <h1
-                    style="margin: 0; font-size: 1.5rem; display: flex; align-items: center; gap: 12px; direction: ltr; font-family: 'Rajdhani', sans-serif;">
-                    <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path
-                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                        </path>
-                    </svg>
-                    <span style="font-weight: 700; color: #fff; letter-spacing: 2px;">SHARGO</span>
-                    <span style="font-weight: 500; color: var(--primary); opacity: 0.8;">BOT</span>
-                </h1>
-            </div>
+            <h1 class="rajdhani"
+                style="margin: 0; font-size: 1.6rem; display: flex; align-items: center; gap: 12px; direction: ltr; color: #fff;">
+                <svg class="logo-svg" viewBox="0 0 24 24" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path
+                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                    </path>
+                </svg>
+                <div style="display: flex; gap: 6px; align-items: baseline;">
+                    <span style="font-weight: 800; letter-spacing: 0.5px;">SHARGO</span>
+                    <span
+                        style="font-weight: 400; color: var(--primary); font-size: 1.1rem; letter-spacing: 1px;">WhatsApp
+                        Bot</span>
+                </div>
+            </h1>
 
             <!-- Prominent Session Indicator -->
             <div id="active-session-indicator" class="session-badge">
-                <span id="session-icon" style="filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));">🤖</span>
+                <i data-lucide="zap"
+                    style="width: 16px; margin-left: 6px; color: var(--primary); filter: drop-shadow(0 0 5px var(--primary-glow));"></i>
                 <span id="header-session-name">בחר חשבון</span>
             </div>
 
@@ -567,17 +648,28 @@
 
         <div class="container">
             <div class="nav-tabs">
-                <div class="nav-tab active" onclick="switchTab('automation')">🤖 אוטומציה</div>
-                <div class="nav-tab" onclick="switchTab('dashboard')">📈 דשבורד</div>
-                <div class="nav-tab" onclick="switchTab('logs')">📁 יומן פעילות</div>
-                <div class="nav-tab" onclick="switchTab('send-message')">✉️ שליחת הודעה</div>
+                <div class="nav-tab active" onclick="switchTab('automation')">
+                    <i data-lucide="cpu" style="width: 18px; margin-left: 8px;"></i>אוטומציה
+                </div>
+                <div class="nav-tab" onclick="switchTab('dashboard')">
+                    <i data-lucide="layout-dashboard" style="width: 18px; margin-left: 8px;"></i>דשבורד
+                </div>
+                <div class="nav-tab" onclick="switchTab('logs')">
+                    <i data-lucide="clipboard-list" style="width: 18px; margin-left: 8px;"></i>יומן פעילות
+                </div>
+                <div class="nav-tab" onclick="switchTab('send-message')">
+                    <i data-lucide="send" style="width: 18px; margin-left: 8px;"></i>שליחת הודעה
+                </div>
             </div>
 
             <!-- Automation Tab -->
             <div id="automation-section" class="section active">
                 <div class="main-grid">
                     <div class="card">
-                        <h2>📱 מצב חיבור: <span id="current-status-text">בחר חשבון</span></h2>
+                        <h2 style="display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="smartphone" style="width: 20px; color: var(--primary);"></i> מצב חיבור:
+                            <span id="current-status-text">בחר חשבון</span>
+                        </h2>
                         <div id="qrcode-container">
                             <div id="loader" class="loader" style="display: none;"></div>
                             <p id="qr-msg" style="margin-top: 15px; color: #64748b;">בחר חשבון מהתפריט בצד</p>
@@ -599,19 +691,70 @@
                         <div id="rules-container"></div>
                         <button class="btn-add" onclick="addNewRule()" style="margin-bottom: 12px;">+ הוסף חוק
                             חדש</button>
-                        <button class="btn-primary" id="save-btn" onclick="saveAllConfig()" style="width: 100%;">שמור
-                            ועדכן הגדרות 🚀</button>
+                        <button class="btn-primary" id="save-btn" onclick="saveAllConfig()"
+                            style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            שמור ועדכן הגדרות <i data-lucide="save" style="width: 18px;"></i>
+                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- Dashboard Tab -->
             <div id="dashboard-section" class="section">
-                <div class="card">
-                    <h2 class="rajdhani" style="color: var(--primary); margin-bottom: 20px;">📊 סטטיסטיקה יומית</h2>
-                    <div
-                        style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
-                        <canvas id="dailyChart" height="100"></canvas>
+                <!-- Summary Row -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i data-lucide="message-square"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total-received">0</span>
+                            <span class="stat-label">סה"כ הודעות היום</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i data-lucide="zap"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total-replied">0</span>
+                            <span class="stat-label">אוטומציות שהופעלו</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i data-lucide="target"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-success-rate">0%</span>
+                            <span class="stat-label">אחוז מענה מוצלח</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i data-lucide="activity"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-current-status" style="font-size: 1.1rem;">בחר
+                                חשבון</span>
+                            <span class="stat-label">סטטוס חשבון</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="main-grid" style="grid-template-columns: 2fr 1.2fr; gap: 20px;">
+                    <div class="card" style="margin-bottom: 0;">
+                        <h2 class="rajdhani"
+                            style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="bar-chart-3" style="width: 20px;"></i> נפח הודעות (שבועי)
+                        </h2>
+                        <div
+                            style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+                            <canvas id="dailyChart" height="150"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-bottom: 0;">
+                        <h2 class="rajdhani"
+                            style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="pie-chart" style="width: 20px;"></i> חוקים פופולריים
+                        </h2>
+                        <div
+                            style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: flex; justify-content: center;">
+                            <canvas id="triggersChart" height="250"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -621,12 +764,11 @@
                 <div class="card">
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 class="rajdhani" style="color: var(--primary); margin: 0;">📜 יומן פעילויות</h2>
+                        <h2 class="rajdhani"
+                            style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="activity" style="width: 20px;"></i> יומן פעילויות
+                        </h2>
                         <div style="display: flex; gap: 12px; align-items: center;">
-                            <select id="log-filter" onchange="filterLogs()"
-                                style="width: auto; padding: 6px 12px; font-size: 0.9rem;">
-                                <option value="all">הצג הכל</option>
-                            </select>
                             <button onclick="clearLogs()" class="btn-logout"
                                 style="padding: 6px 14px; font-size: 0.85rem; border-color: var(--border); color: var(--text-muted);">נקה
                                 יומן</button>
@@ -640,7 +782,9 @@
             <div id="send-message-section" class="section">
                 <div class="main-grid" style="grid-template-columns: 1fr 1fr;">
                     <div class="card">
-                        <h2 class="rajdhani" style="color: var(--primary); margin-bottom: 20px;">📤 שליחת הודעה ידנית
+                        <h2 class="rajdhani"
+                            style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="send" style="width: 20px;"></i> שליחת הודעה ידנית
                         </h2>
                         <p style="margin-bottom: 25px; color: var(--text-muted); font-size: 0.95rem;">
                             שולח מהחשבון: <strong id="send-from-indicator"
@@ -661,12 +805,16 @@
                             <textarea id="manual-msg-content" rows="4" placeholder="הקלד את ההודעה כאן..."></textarea>
                         </div>
 
-                        <button onclick="sendManualMessage()" class="btn-primary" style="width: 100%;">שלח הודעה
-                            🚀</button>
+                        <button onclick="sendManualMessage()" class="btn-primary"
+                            style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            שלח הודעה <i data-lucide="send" style="width: 18px;"></i>
+                        </button>
                     </div>
 
                     <div class="card">
-                        <h2 class="rajdhani" style="color: var(--primary); margin-bottom: 20px;">🔌 API לחיבור חיצוני
+                        <h2 class="rajdhani"
+                            style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="terminal" style="width: 20px;"></i> API לחיבור חיצוני
                         </h2>
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5;">
                             באפשרותך לשלוח הודעות דרך ה-API באמצעות בקשת HTTP POST מכל מערכת חיצונית.
@@ -675,7 +823,7 @@
                         <div
                             style="background: #000; padding: 20px; border-radius: 12px; border: 1px solid var(--border); position: relative;">
                             <button onclick="copyApiExample()"
-                                style="position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,0.05); color: var(--primary); border: 1px solid var(--primary); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: 'Rajdhani', sans-serif; font-weight: 700;">העתק</button>
+                                style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.05); color: var(--primary); border: 1px solid var(--primary); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: 'Rajdhani', sans-serif; font-weight: 700;">העתק</button>
                             <pre id="api-code-block"
                                 style="margin: 0; color: #d1d5db; white-space: pre-wrap; direction: ltr; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.4;">
 curl -X POST http://localhost:3000/api/send-message \
@@ -741,18 +889,21 @@ curl -X POST http://localhost:3000/api/send-message \
         });
 
         socket.on('log', (data) => {
-            const time = new Date().toLocaleTimeString();
+            // Only append if it matches current selection or is a system log
+            const isSystem = data.sessionId === 'system';
+            const isMatch = selectedSessionId === data.sessionId;
+
+            if (!isMatch && !isSystem) return;
+
+            const time = new Date().toLocaleTimeString('he-IL');
             const div = document.createElement('div');
             div.className = 'log-entry';
-            div.dataset.sessionId = data.sessionId; // Crucial for filtering
+            div.dataset.sessionId = data.sessionId;
 
-            // Apply current filter immediately
-            const currentFilter = document.getElementById('log-filter').value;
-            if (currentFilter !== 'all' && currentFilter !== data.sessionId) {
-                div.style.display = 'none';
-            }
+            // Optional: style system logs differently
+            if (isSystem) div.style.color = 'var(--primary)';
 
-            div.innerHTML = `<span class="log-time">[${time}]</span><span class="log-id">[${data.sessionId}]</span> ${data.message}`;
+            div.innerHTML = `<span class="log-time">[${time}]</span> ${data.message}`;
             logsEl.appendChild(div);
             logsEl.scrollTop = logsEl.scrollHeight;
         });
@@ -762,8 +913,6 @@ curl -X POST http://localhost:3000/api/send-message \
             sessionListEl.innerHTML = '';
             const ids = Object.keys(sessions);
             document.getElementById('total-sessions').innerText = ids.length;
-
-            updateLogFilterOptions(ids);
 
             ids.forEach(id => {
                 const s = sessions[id];
@@ -778,13 +927,16 @@ curl -X POST http://localhost:3000/api/send-message \
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span class="session-name">${id}</span>
                         <div style="display:flex; gap:5px;">
-                            <span onclick="renameSession('${id}', event)" style="font-size:1.1rem; padding: 5px; cursor: pointer; color:#3b82f6;" title="שנה שם">✏️</span>
+                            <span onclick="renameSession('${id}', event)" style="padding: 5px; cursor: pointer; color: var(--primary); display: flex; align-items: center;" title="שנה שם">
+                                <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
+                            </span>
                         </div>
                     </div>
                     <span class="session-status"><span class="status-dot ${statusClass}"></span> ${translateStatus(s.status)}</span>
                 `;
                 sessionListEl.appendChild(item);
             });
+            lucide.createIcons();
         }
 
         async function renameSession(oldId, event) {
@@ -809,41 +961,14 @@ curl -X POST http://localhost:3000/api/send-message \
                         alert(`שם החשבון שונה בהצלחה ל-${newId}!`);
                         if (selectedSessionId === oldId) {
                             selectedSessionId = null; // Force re-select or wait for update
-                            document.getElementById('active-session-indicator').innerHTML = '<span style="font-size: 1.3rem;">🤖</span> <span id="header-session-name">בחר חשבון</span>';
+                            document.getElementById('active-session-indicator').innerHTML = '<i data-lucide="zap" style="width: 16px; margin-left: 6px; color: var(--primary);"></i> <span id="header-session-name">בחר חשבון</span>';
+                            lucide.createIcons();
                         }
                     } else {
                         const err = await res.json();
                         alert('שגיאה: ' + err.error);
                     }
                 }
-            }
-        }
-
-        function updateLogFilterOptions(ids) {
-            const select = document.getElementById('log-filter');
-            if (!select) return;
-
-            const currentVal = select.value;
-            select.innerHTML = '<option value="all">הצג הכל</option>';
-
-            ids.forEach(id => {
-                const option = document.createElement('option');
-                option.value = id;
-                option.innerText = id;
-                if (id === currentVal) option.selected = true;
-                select.appendChild(option);
-            });
-        }
-
-        function filterLogs() {
-            const filter = document.getElementById('log-filter').value;
-            if (filter !== 'all') {
-                loadLogs(filter);
-            } else {
-                // If 'all', we don't have a backend way to load EVERYTHING combined efficiently right now
-                // So we just show whatever is in the DOM (which is usually the last loaded session)
-                const entries = document.querySelectorAll('.log-entry');
-                entries.forEach(entry => entry.style.display = 'block');
             }
         }
 
@@ -859,14 +984,11 @@ curl -X POST http://localhost:3000/api/send-message \
             const apiSessionId = document.getElementById('api-session-id');
             if (apiSessionId) apiSessionId.innerText = id;
 
-            // Sync log filter
-            const logFilter = document.getElementById('log-filter');
-            if (logFilter) logFilter.value = id;
-
             renderSessionList();
             updateUIForSession(sessions[id]);
             loadConfig(); // Load config for this session
             loadLogs(id); // Load logs for this session
+            updateDashboardCharts(); // Redraw dashboard for the new session
         }
 
         async function loadLogs(id) {
@@ -887,10 +1009,10 @@ curl -X POST http://localhost:3000/api/send-message \
                         div.dataset.sessionId = id;
 
                         // Parse log line if it has timestamp
-                        // Format: [timestamp] message
-                        const match = logLine.match(/^\[(.*?)\] (.*)/);
+                        // Match timestamp and message
+                        const match = logLine.match(/\[(.*?)\] (.*)/);
                         if (match) {
-                            div.innerHTML = `<span class="log-time">[${match[1]}]</span> <span class="log-id">[${id}]</span> ${match[2]}`;
+                            div.innerHTML = `<span class="log-time">[${match[1]}]</span> ${match[2]}`;
                         } else {
                             div.innerText = logLine;
                         }
@@ -957,7 +1079,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 qrMsg.innerText = 'סרוק קוד QR לחיבור:';
                 loader.style.display = 'none';
             } else if (s.status === 'READY' || s.status === 'AUTHENTICATED') {
-                qrcodeEl.innerHTML = '<div style="font-size: 5rem;">📱</div>';
+                qrcodeEl.innerHTML = '<div style="color: var(--primary); filter: drop-shadow(0 0 10px var(--primary-glow));"><i data-lucide="smartphone" style="width: 80px; height: 80px;"></i></div>';
                 qrMsg.innerText = '✓ מחובר ופעיל';
                 loader.style.display = 'none';
             } else if (s.status.includes('LOADING')) {
@@ -969,6 +1091,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 qrMsg.innerText = 'ממתין לעדכון סטטוס...';
                 loader.style.display = 'block';
             }
+            lucide.createIcons();
         }
 
         async function promptAddSession() {
@@ -991,7 +1114,12 @@ curl -X POST http://localhost:3000/api/send-message \
 
         async function deleteSession(id) {
             if (!id) return;
-            if (!confirm(`האם אתה בטוח שברצונך למחוק את החשבון "${id}"?`)) return;
+
+            const confirm1 = confirm(`האם אתה בטוח שברצונך למחוק את החשבון "${id}"?`);
+            if (!confirm1) return;
+
+            const confirm2 = confirm(`⚠️ אזהרה חשובה!\n\nהפעולה תמחק את כל ההיסטוריה, ההגדרות והגישה לחשבון "${id}" לצמיתות.\n\nהאם להמשיך?`);
+            if (!confirm2) return;
 
             const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
             if (res.ok) {
@@ -1029,29 +1157,104 @@ curl -X POST http://localhost:3000/api/send-message \
         }
 
         // Charts & Config logic (Restored and simplified)
-        let dailyChart;
+        let dailyChart, triggersChart;
         function initChart() {
-            const ctx = document.getElementById('dailyChart').getContext('2d');
-            dailyChart = new Chart(ctx, {
+            const ctx1 = document.getElementById('dailyChart').getContext('2d');
+            dailyChart = new Chart(ctx1, {
                 type: 'line',
-                data: { labels: [], datasets: [{ label: 'התקבלו', data: [], borderColor: '#3b82f6', fill: false }, { label: 'מענה', data: [], borderColor: '#25D366', fill: false }] }
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'התקבלו', data: [], borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true, tension: 0.4 },
+                        { label: 'מענה', data: [], borderColor: '#10b981', fill: false, tension: 0.4 }
+                    ]
+                },
+                options: {
+                    plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Inter' } } } },
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+
+            const ctx2 = document.getElementById('triggersChart').getContext('2d');
+            triggersChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: ['#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } }
+                    },
+                    cutout: '70%'
+                }
             });
         }
 
-        socket.on('stats_update', (stats) => {
-            if (!dailyChart) return;
-            const labels = Object.keys(stats.daily).sort();
-            dailyChart.data.labels = labels;
-            dailyChart.data.datasets[0].data = labels.map(l => stats.daily[l].received);
-            dailyChart.data.datasets[1].data = labels.map(l => stats.daily[l].replied);
-            dailyChart.update();
+        let lastStatsData = { sessions: {} };
+        socket.on('stats_update', (statsData) => {
+            lastStatsData = statsData;
+            updateDashboardCharts();
         });
+
+        function updateDashboardCharts() {
+            if (!dailyChart || !selectedSessionId) return;
+
+            const sessionStats = (lastStatsData.sessions && lastStatsData.sessions[selectedSessionId]) || { daily: {}, triggers: {} };
+
+            const labels = Object.keys(sessionStats.daily).sort();
+            const today = new Date().toISOString().split('T')[0];
+            const todayStats = sessionStats.daily[today] || { received: 0, replied: 0 };
+
+            // Update Cards
+            const totalRecEl = document.getElementById('stat-total-received');
+            const totalRepEl = document.getElementById('stat-total-replied');
+            const rateEl = document.getElementById('stat-success-rate');
+            const activeSessEl = document.getElementById('stat-current-status');
+
+            if (totalRecEl) totalRecEl.innerText = todayStats.received;
+            if (totalRepEl) totalRepEl.innerText = todayStats.replied;
+            if (rateEl) {
+                const rate = todayStats.received > 0 ? Math.round((todayStats.replied / todayStats.received) * 100) : 0;
+                rateEl.innerText = rate + '%';
+            }
+            if (activeSessEl) {
+                const s = sessions[selectedSessionId];
+                activeSessEl.innerText = s ? translateStatus(s.status) : 'לא ידוע';
+                // Color code status
+                activeSessEl.style.color = (s && (s.status === 'READY' || s.status === 'AUTHENTICATED')) ? 'var(--primary)' : '#94a3b8';
+            }
+
+            // Update Line Chart
+            dailyChart.data.labels = labels.map(l => l.split('-').reverse().slice(0, 2).join('/'));
+            dailyChart.data.datasets[0].data = labels.map(l => sessionStats.daily[l].received);
+            dailyChart.data.datasets[1].data = labels.map(l => sessionStats.daily[l].replied);
+            dailyChart.update();
+
+            // Update Triggers Chart
+            const triggers = sessionStats.triggers || {};
+            const triggerLabels = Object.keys(triggers).sort((a, b) => triggers[b] - triggers[a]).slice(0, 6);
+            triggersChart.data.labels = triggerLabels;
+            triggersChart.data.datasets[0].data = triggerLabels.map(l => triggers[l]);
+            triggersChart.update();
+        }
 
         function switchTab(tab) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             event.currentTarget.classList.add('active');
             document.getElementById(tab + '-section').classList.add('active');
+
+            if (tab === 'dashboard') {
+                updateDashboardCharts();
+            }
         }
 
         function clearLogs() { logsEl.innerHTML = ''; }
@@ -1079,21 +1282,28 @@ curl -X POST http://localhost:3000/api/send-message \
                     rule.triggerOn || 'incoming'
                 );
             });
+            lucide.createIcons();
         }
 
         function addNewRule(triggers = [], reply = '', sources = [], webhook = '', nextState = '', context = '', isGroupOnly = false, isPrivateOnly = false, description = '', triggerOn = 'incoming') {
             const card = document.createElement('div');
             card.className = 'auto-reply-card';
             card.innerHTML = `
-                <div class="btn-delete-rule" onclick="this.parentElement.remove()">✕</div>
+                <div class="btn-delete-rule" onclick="this.parentElement.remove()">
+                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                </div>
                 
                 <div style="margin-bottom:15px;">
-                    <span style="font-size:0.85rem; font-weight:700; color: var(--primary); font-family: 'Rajdhani', sans-serif; text-transform: uppercase;">תיאור החוק (אופציונלי):</span>
+                    <span style="font-size:0.85rem; font-weight:700; color: var(--primary); font-family: 'Rajdhani', sans-serif; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="settings" style="width: 14px;"></i> תיאור החוק (אופציונלי):
+                    </span>
                     <input type="text" class="rule-description" placeholder="למשל: מענה אוטומטי לשאלות נפוצות" value="${description}" style="margin-top: 8px;">
                 </div>
 
                 <div style="margin-bottom:15px;">
-                    <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif;">🎯 מילות מפתח:</span>
+                    <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="target" style="width:14px; color: var(--primary);"></i> מילות מפתח:
+                    </span>
                     <div class="tags-container triggers-container" style="margin-top: 8px;">
                         ${triggers.map(t => `<span class="tag" data-value="${t.value}" data-type="${t.type}">${MATCH_TYPES[t.type]} ${t.value} <i onclick="this.parentElement.remove()">✕</i></span>`).join('')}
                         <div style="display: flex; gap: 8px; flex-grow: 1; min-width: 250px;">
@@ -1111,7 +1321,9 @@ curl -X POST http://localhost:3000/api/send-message \
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div>
-                        <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif;">⏰ מתי להפעיל?</span>
+                        <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="clock" style="width:14px; color: var(--primary);"></i> מתי להפעיל?
+                        </span>
                         <select class="rule-trigger-on-select" style="margin-top: 8px;">
                             <option value="incoming" ${triggerOn === 'incoming' ? 'selected' : ''}>הודעה נכנסת</option>
                             <option value="outgoing" ${triggerOn === 'outgoing' ? 'selected' : ''}>הודעה יוצאת</option>
@@ -1119,17 +1331,21 @@ curl -X POST http://localhost:3000/api/send-message \
                         </select>
                     </div>
                     <div>
-                        <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif;">📍 איפה יפעל?</span>
+                        <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="map-pin" style="width:14px; color: var(--primary);"></i> איפה יפעל?
+                        </span>
                         <select class="rule-type-select" style="margin-top: 8px;">
                             <option value="all" ${!isGroupOnly && !isPrivateOnly ? 'selected' : ''}>הכל (קבוצות ופרטי)</option>
-                            <option value="groups" ${isGroupOnly ? 'selected' : ''}>קבוצות בלבד 👥</option>
-                            <option value="private" ${isPrivateOnly ? 'selected' : ''}>פרטי בלבד 👤</option>
+                            <option value="groups" ${isGroupOnly ? 'selected' : ''}>קבוצות בלבד</option>
+                            <option value="private" ${isPrivateOnly ? 'selected' : ''}>פרטי בלבד</option>
                         </select>
                     </div>
                 </div>
 
                 <div style="margin-bottom:15px;">
-                    <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif;">🔓 מספרים מורשים (אופציונלי):</span>
+                    <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="unlock" style="width:14px; color: var(--primary);"></i> מספרים מורשים (אופציונלי):
+                    </span>
                     <div class="tags-container sources-container" style="margin-top: 8px;">
                         ${sources.map(s => `<span class="tag source" data-value="${s}">${s} <i onclick="this.parentElement.remove()">✕</i></span>`).join('')}
                         <input type="text" placeholder="הוסף מספר (Enter)" style="flex-grow:1; border: none; background: transparent; padding: 5px;" onkeydown="addSourceTag(event, this)">
@@ -1137,23 +1353,31 @@ curl -X POST http://localhost:3000/api/send-message \
                 </div>
 
                 <div style="margin-bottom:15px;">
-                    <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif;">💬 תשובה אוטומטית:</span>
+                    <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="message-square" style="width:14px; color: var(--primary);"></i> תשובה אוטומטית:
+                    </span>
                     <textarea rows="3" class="reply-textarea" style="margin-top: 8px;" placeholder="הכנס את תוכן התשובה כאן...">${reply}</textarea>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
                     <div>
-                        <span style="font-size:0.75rem; color: var(--text-muted); font-weight: 600;">⚠️ מצב מקור (אופציונלי):</span>
+                        <span style="font-size:0.75rem; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="file-input" style="width:12px;"></i> מצב מקור (אופציונלי):
+                        </span>
                         <input type="text" class="rule-context" placeholder="למשל: menu" value="${context}" style="margin-top:5px;">
                     </div>
                     <div>
-                        <span style="font-size:0.75rem; color: var(--text-muted); font-weight: 600;">➡️ מצב יעד (אופציונלי):</span>
+                        <span style="font-size:0.75rem; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="file-output" style="width:12px;"></i> מצב יעד (אופציונלי):
+                        </span>
                         <input type="text" class="next-state" placeholder="למשל: orders" value="${nextState}" style="margin-top:5px;">
                     </div>
                 </div>
 
                 <div>
-                    <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif;">🔗 WEBHOOK URL (אופציונלי):</span>
+                    <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="link" style="width:14px; color: var(--primary);"></i> WEBHOOK URL (אופציונלי):
+                    </span>
                     <input type="text" class="webhook-url" placeholder="https://your-api.com/webhook" value="${webhook}" style="margin-top: 8px;">
                 </div>
             `;
@@ -1241,6 +1465,14 @@ curl -X POST http://localhost:3000/api/send-message \
 
         initChart();
         loadConfig();
+
+        // Initial stats fetch
+        fetch('/api/stats').then(res => res.json()).then(data => {
+            lastStatsData = data;
+            updateDashboardCharts();
+        });
+
+        lucide.createIcons();
     </script>
 </body>
 
