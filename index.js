@@ -167,14 +167,16 @@ function startSession(sessionId) {
     });
 
     client.on('message_create', async (msg) => {
-        // Prevent bot from replying to its own automated messages (infinite loop safety)
-        // If the message has the same body as a recent reply, or if it was sent via code (though harder to detect solely by flags)
-        // ideally handleMessage logic will filter based on rules. 
-
-        logToUI(sessionId, `הודעה ${msg.fromMe ? 'יוצאת אל' : 'נכנסת מ'}-${msg.fromMe ? msg.to : msg.from}: ${msg.body}`);
-        if (!msg.fromMe) updateStats(sessionId, 'received'); // Only count incoming as 'received' stats
-
         try {
+            const chat = await msg.getChat();
+            const contact = await msg.getContact();
+            const senderName = msg.fromMe ? 'אני' : (contact.pushname || contact.name || msg.from);
+            const groupInfo = chat.isGroup ? ` [קבוצה: ${chat.name}]` : '';
+
+            logToUI(sessionId, `📩 הודעה מ-${senderName}${groupInfo}: ${msg.body}`);
+
+            if (!msg.fromMe) updateStats(sessionId, 'received');
+
             const result = await handleMessage(msg, client, sessionId, (logMsg) => {
                 logToUI(sessionId, logMsg);
             });
