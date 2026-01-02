@@ -59,7 +59,7 @@ function logToUI(sessionId, msg) {
     io.emit('log', { sessionId, message: msg });
 }
 
-function createClient(sessionId) {
+function startSession(sessionId) {
     if (activeSessions[sessionId]) return activeSessions[sessionId];
 
     logToUI(sessionId, `🚀 מתחיל אתחול דפדפן עבור ${sessionId}...`);
@@ -157,7 +157,7 @@ function createClient(sessionId) {
 
 // Initialize saved sessions
 const savedSessions = readJSON(SESSIONS_FILE, ['default']);
-savedSessions.forEach(id => createClient(id));
+savedSessions.forEach(id => startSession(id));
 
 // APIs
 app.get('/api/sessions', (req, res) => {
@@ -184,7 +184,7 @@ app.post('/api/sessions', (req, res) => {
         return res.status(400).json({ error: 'Session already exists' });
     }
 
-    createClient(sanitizedId);
+    startSession(sanitizedId);
 
     // Save to file
     const sessions = readJSON(SESSIONS_FILE, []);
