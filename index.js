@@ -168,10 +168,18 @@ function startSession(sessionId) {
 
     client.on('message_create', async (msg) => {
         try {
-            const chat = await msg.getChat();
-            const contact = await msg.getContact();
-            const senderName = msg.fromMe ? 'אני' : (contact.pushname || contact.name || msg.from);
-            const groupInfo = chat.isGroup ? ` [קבוצה: ${chat.name}]` : '';
+            // Safer way to get sender name without calling getContact() which is failing
+            let senderName = msg.fromMe ? 'אני' : (msg._data.notifyName || msg.from.split('@')[0]);
+            let groupInfo = '';
+
+            try {
+                const chat = await msg.getChat();
+                if (chat && chat.isGroup) {
+                    groupInfo = ` [קבוצה: ${chat.name}]`;
+                }
+            } catch (chatError) {
+                // If getChat fails, we just don't show group info
+            }
 
             logToUI(sessionId, `📩 הודעה מ-${senderName}${groupInfo}: ${msg.body}`);
 
