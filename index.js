@@ -107,7 +107,9 @@ function startSession(sessionId) {
                 '--disable-gpu',
                 '--no-zygote'
             ]
-        }
+        },
+        // Prevent marking messages as read
+        defaultReadReceiptsDisabled: true
     });
 
     activeSessions[sessionId] = {
