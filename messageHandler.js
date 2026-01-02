@@ -107,12 +107,34 @@ async function handleMessage(message, client, sessionId, logCallback) {
             if (rule.webhookUrl) {
                 if (logCallback) logCallback(`🔗 שולח Webhook לכתובת: ${rule.webhookUrl}`);
                 try {
+                    let mediaData = null;
+                    if (message.hasMedia) {
+                        try {
+                            const media = await message.downloadMedia();
+                            if (media) {
+                                mediaData = {
+                                    mimetype: media.mimetype,
+                                    data: media.data, // Base64 string
+                                    filename: media.filename
+                                };
+                            }
+                        } catch (e) {
+                            if (logCallback) logCallback(`⚠️ שגיאה בהורדת מדיה: ${e.message}`);
+                        }
+                    }
+
                     const response = await axios.post(rule.webhookUrl, {
                         event: 'message_match',
                         sessionId: sessionId,
                         message: message.body,
-                        from: sender,
-                        pushname: 'Unknown',
+                        media: mediaData,
+                        from: sender, // This is 'otherParty' logic if we want consistency, but sender is original source for webhook info usually. Let's keep strict sender.
+                        // Actually, if I trigger it (outgoing), sender is ME. Webhook consumer might get confused.
+                        // Ideally we send both sender and 'direction' or similar.
+                        // For now keeping 'from: sender' is technically correct (who sent the msg).
+                        originalSender: message.from,
+                        isFromMe: message.fromMe,
+                        pushname: message._data.notifyName || 'Unknown',
                         currentState: currentState,
                         nextState: rule.nextState || currentState,
                         timestamp: Date.now()
