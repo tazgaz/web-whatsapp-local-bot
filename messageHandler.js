@@ -123,18 +123,26 @@ async function handleMessage(message, client, sessionId, logCallback) {
                         }
                     }
 
+                    let groupName = null;
+                    try {
+                        const chat = await message.getChat();
+                        if (chat.isGroup) {
+                            groupName = chat.name;
+                        }
+                    } catch (e) {
+                        if (logCallback) logCallback(`⚠️ שגיאה בקבלת פרטי קבוצה: ${e.message}`);
+                    }
+
                     const response = await axios.post(rule.webhookUrl, {
                         event: 'message_match',
                         sessionId: sessionId,
                         message: message.body,
                         media: mediaData,
-                        from: sender, // This is 'otherParty' logic if we want consistency, but sender is original source for webhook info usually. Let's keep strict sender.
-                        // Actually, if I trigger it (outgoing), sender is ME. Webhook consumer might get confused.
-                        // Ideally we send both sender and 'direction' or similar.
-                        // For now keeping 'from: sender' is technically correct (who sent the msg).
+                        from: sender,
                         originalSender: message.from,
                         isFromMe: message.fromMe,
                         pushname: message._data.notifyName || 'Unknown',
+                        groupName: groupName, // Added group name
                         currentState: currentState,
                         nextState: rule.nextState || currentState,
                         timestamp: Date.now()
