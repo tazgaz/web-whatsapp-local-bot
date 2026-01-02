@@ -895,7 +895,7 @@ curl -X POST http://localhost:3000/api/send-message \
 
             if (!isMatch && !isSystem) return;
 
-            const time = new Date().toLocaleTimeString('he-IL');
+            const time = new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem' });
             const div = document.createElement('div');
             div.className = 'log-entry';
             div.dataset.sessionId = data.sessionId;

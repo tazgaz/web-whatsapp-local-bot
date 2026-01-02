@@ -80,7 +80,7 @@ function logToUI(sessionId, msg) {
         if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
 
         const logFile = path.join(logsDir, `session-${sessionId}.log`);
-        const timestamp = new Date().toLocaleString('he-IL');
+        const timestamp = new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' });
         fs.appendFileSync(logFile, `[${timestamp}] ${msg}\n`);
     } catch (err) {
         console.error('Error saving log:', err);
