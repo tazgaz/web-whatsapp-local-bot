@@ -123,15 +123,17 @@ async function handleMessage(message, client, sessionId, logCallback) {
                         }
                     }
 
-                    let groupName = null;
+                    let groupName = "";
                     try {
                         const chat = await message.getChat();
-                        if (chat.isGroup) {
-                            groupName = chat.name;
+                        if (chat && chat.isGroup) {
+                            groupName = chat.name || "";
                         }
                     } catch (e) {
-                        if (logCallback) logCallback(`⚠️ שגיאה בקבלת פרטי קבוצה: ${e.message}`);
+                        // Silent catch for group name
                     }
+
+                    const pushname = message._data.notifyName || (message.fromMe ? 'אני' : 'Unknown');
 
                     const response = await axios.post(rule.webhookUrl, {
                         event: 'message_match',
@@ -141,15 +143,19 @@ async function handleMessage(message, client, sessionId, logCallback) {
                         from: sender,
                         originalSender: message.from,
                         isFromMe: message.fromMe,
-                        pushname: message._data.notifyName || 'Unknown',
-                        groupName: groupName, // Added group name
+                        pushname: pushname,
+                        groupName: groupName,
                         currentState: currentState,
                         nextState: rule.nextState || currentState,
                         timestamp: Date.now()
                     });
                     if (logCallback) logCallback(`✅ Webhook נשלח בהצלחה (קוד: ${response.status})`);
                 } catch (err) {
-                    if (logCallback) logCallback(`✗ שגיאה בשליחת Webhook: ${err.message}`);
+                    let detail = err.message;
+                    if (err.response && err.response.data) {
+                        detail = JSON.stringify(err.response.data).substring(0, 100);
+                    }
+                    if (logCallback) logCallback(`✗ שגיאה בשליחת Webhook: ${detail}`);
                 }
             }
             return { replied: !!rule.reply, trigger: rule.description || (triggers[0]?.value || 'כללי') };
