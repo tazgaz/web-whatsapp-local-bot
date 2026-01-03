@@ -89,6 +89,17 @@ function logToUI(sessionId, msg) {
     io.emit('log', { sessionId, message: msg });
 }
 
+function updateSessionStatus(sessionId, status, qr = null) {
+    if (activeSessions[sessionId]) {
+        activeSessions[sessionId].status = status;
+        activeSessions[sessionId].lastStatusChange = Date.now();
+        if (qr !== null) {
+            activeSessions[sessionId].qr = qr;
+        }
+        io.emit('status', { sessionId, status, qr: activeSessions[sessionId].qr });
+    }
+}
+
 function startSession(sessionId) {
     if (activeSessions[sessionId]) return activeSessions[sessionId];
 
@@ -115,7 +126,8 @@ function startSession(sessionId) {
     activeSessions[sessionId] = {
         client,
         status: 'INITIALIZING',
-        qr: ''
+        qr: '',
+        lastStatusChange: Date.now()
     };
 
     // Watchdog Timer: Protect against 99% Stuck Issues
@@ -137,35 +149,28 @@ function startSession(sessionId) {
     client.on('qr', async (qr) => {
         logToUI(sessionId, '✓ קוד QR התקבל. סרוק מהדפדפן.');
         const qrDataURL = await QRCode.toDataURL(qr);
-        activeSessions[sessionId].qr = qrDataURL;
-        activeSessions[sessionId].status = 'QR_RECEIVED';
-        io.emit('status', { sessionId, status: 'QR_RECEIVED', qr: qrDataURL });
+        updateSessionStatus(sessionId, 'QR_RECEIVED', qrDataURL);
     });
 
     client.on('ready', () => {
         logToUI(sessionId, '✓ וואטסאפ מוכן לפעולה!');
-        activeSessions[sessionId].status = 'READY';
-        activeSessions[sessionId].qr = '';
-        io.emit('status', { sessionId, status: 'READY' });
+        updateSessionStatus(sessionId, 'READY', '');
         initScheduler(client);
     });
 
     client.on('loading_screen', (percent, message) => {
         logToUI(sessionId, `טוען: ${percent}% - ${message}`);
-        activeSessions[sessionId].status = `LOADING (${percent}%)`;
-        io.emit('status', { sessionId, status: activeSessions[sessionId].status });
+        updateSessionStatus(sessionId, `LOADING (${percent}%)`);
     });
 
     client.on('authenticated', () => {
         logToUI(sessionId, '✓ התחברות בוצעה בהצלחה!');
-        activeSessions[sessionId].status = 'AUTHENTICATED';
-        io.emit('status', { sessionId, status: 'AUTHENTICATED' });
+        updateSessionStatus(sessionId, 'AUTHENTICATED');
     });
 
     client.on('auth_failure', (msg) => {
         logToUI(sessionId, `✗ שגיאת התחברות: ${msg}`);
-        activeSessions[sessionId].status = 'AUTH_FAILURE';
-        io.emit('status', { sessionId, status: 'AUTH_FAILURE' });
+        updateSessionStatus(sessionId, 'AUTH_FAILURE');
     });
 
     client.on('message_create', async (msg) => {
@@ -201,8 +206,17 @@ function startSession(sessionId) {
 
     client.on('disconnected', (reason) => {
         logToUI(sessionId, `✗ וואטסאפ התנתק: ${reason}`);
-        activeSessions[sessionId].status = 'DISCONNECTED';
-        io.emit('status', { sessionId, status: 'DISCONNECTED' });
+        updateSessionStatus(sessionId, 'DISCONNECTED');
+
+        // Auto-reconnect after 5 seconds
+        logToUI(sessionId, '🔄 מנסה להתחבר מחדש בעוד 5 שניות...');
+        setTimeout(async () => {
+            try {
+                await client.destroy();
+            } catch (e) { }
+            delete activeSessions[sessionId];
+            startSession(sessionId);
+        }, 5000);
     });
 
     client.initialize().catch(err => {
@@ -215,6 +229,43 @@ function startSession(sessionId) {
 // Initialize saved sessions
 const savedSessions = readJSON(SESSIONS_FILE, ['default']);
 savedSessions.forEach(id => startSession(id));
+
+// Periodic Health Check - runs every 5 minutes
+setInterval(async () => {
+    for (const sessionId in activeSessions) {
+        const session = activeSessions[sessionId];
+
+        // Check if session is stuck or not ready for too long
+        if (session.status !== 'READY' && session.status !== 'QR_RECEIVED') {
+            const statusAge = Date.now() - (session.lastStatusChange || 0);
+
+            // If stuck for more than 10 minutes, restart
+            if (statusAge > 10 * 60 * 1000) {
+                logToUI(sessionId, '⚠️ סשן תקוע - מבצע ריסטרט אוטומטי...');
+                try {
+                    await session.client.destroy();
+                } catch (e) { }
+                delete activeSessions[sessionId];
+                startSession(sessionId);
+            }
+        }
+
+        // Ping the client to keep it alive
+        if (session.status === 'READY') {
+            try {
+                await session.client.getState();
+            } catch (err) {
+                logToUI(sessionId, `⚠️ סשן לא מגיב - מבצע ריסטרט: ${err.message}`);
+                try {
+                    await session.client.destroy();
+                } catch (e) { }
+                delete activeSessions[sessionId];
+                startSession(sessionId);
+            }
+        }
+    }
+}, 5 * 60 * 1000); // Every 5 minutes
+
 
 // APIs
 app.get('/api/sessions', (req, res) => {
@@ -405,6 +456,47 @@ app.get('/api/logs', (req, res) => {
     }
 });
 
+app.get('/api/session-health/:sessionId', async (req, res) => {
+    const { sessionId } = req.params;
+    const session = activeSessions[sessionId];
+
+    if (!session) {
+        return res.status(404).json({
+            healthy: false,
+            error: 'Session not found',
+            sessionId
+        });
+    }
+
+    const isReady = session.status === 'READY';
+
+    // Try to ping the client if it claims to be ready
+    if (isReady) {
+        try {
+            await session.client.getState();
+            return res.json({
+                healthy: true,
+                status: session.status,
+                sessionId,
+                uptime: Date.now() - session.lastStatusChange
+            });
+        } catch (err) {
+            return res.status(503).json({
+                healthy: false,
+                status: session.status,
+                error: 'Session not responsive',
+                sessionId
+            });
+        }
+    }
+
+    res.json({
+        healthy: false,
+        status: session.status,
+        sessionId
+    });
+});
+
 app.post('/api/send-message', async (req, res) => {
     const { to, message, sessionId } = req.body;
     const sid = sessionId || 'default';
@@ -444,6 +536,15 @@ app.post('/api/logout', async (req, res) => {
         logToUI(sid, `✗ שגיאה בהתנתקות: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
+});
+
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        message: 'WhatsApp Bot is running',
+        timestamp: new Date().toISOString(),
+        sessions: Object.keys(activeSessions).length
+    });
 });
 
 app.post('/api/restart', (req, res) => {

@@ -1,5 +1,5 @@
 services:
-  # הבוט שבנינו - מנהל את הוואטסאפ וה-UI
+  # הבוט שבנינו
   whatsapp-bot:
     build: .
     container_name: whatsapp-bot
@@ -21,10 +21,16 @@ services:
     environment:
       - NODE_ENV=production
     restart: always
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health" ]
+      interval: 2m
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - automation-network
 
-  # מערכת n8n - לניהול אוטומציות ויזואליות
+  # מערכת n8n
   n8n:
     image: n8nio/n8n:latest
     container_name: n8n-automation
@@ -37,6 +43,9 @@ services:
       - N8N_HOST=n8n
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
+      - N8N_BLOCK_FS_WRITE_ACCESS=false
+      - N8N_DEFAULT_BINARY_DATA_MODE=memory
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
       - NODE_ENV=production
     volumes:
       - ./n8n_data:/home/node/.n8n
@@ -44,7 +53,26 @@ services:
     networks:
       - automation-network
 
-  # Redis - לניהול זיכרון מהיר ומשימות (Queue)
+  # שרת FTP אמין יותר
+  ftp-server:
+    image: fauria/vsftpd
+    container_name: n8n-ftp
+    ports:
+      - "2121:21"
+      - "21100-21110:21100-21110"
+    environment:
+      - FTP_USER=n8n
+      - FTP_PASS=n8n
+      - PASV_MIN_PORT=21100
+      - PASV_MAX_PORT=21110
+      - PASV_ADDRESS=127.0.0.1
+    volumes:
+      - ./data:/home/vsftpd/n8n
+    restart: always
+    networks:
+      - automation-network
+
+  # Redis
   redis:
     image: redis:6-alpine
     container_name: redis-cache
