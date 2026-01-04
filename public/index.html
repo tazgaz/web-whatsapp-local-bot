@@ -1269,6 +1269,14 @@ curl -X POST http://localhost:3000/api/send-message \
             const config = await res.json();
             rulesContainer.innerHTML = '';
             (config.autoReplies || []).forEach(rule => {
+                let chatTypes = rule.chatTypes || [];
+                // Migration/Fallback logic
+                if (chatTypes.length === 0) {
+                    if (rule.isGroupOnly) chatTypes = ['group'];
+                    else if (rule.isPrivateOnly) chatTypes = ['private'];
+                    else chatTypes = ['group', 'private', 'channel'];
+                }
+
                 addNewRule(
                     rule.triggers || [],
                     rule.reply || '',
@@ -1279,15 +1287,35 @@ curl -X POST http://localhost:3000/api/send-message \
                     rule.isGroupOnly || false,
                     rule.isPrivateOnly || false,
                     rule.description || '',
-                    rule.triggerOn || 'incoming'
+                    rule.triggerOn || 'incoming',
+                    chatTypes
                 );
             });
             lucide.createIcons();
         }
 
-        function addNewRule(triggers = [], reply = '', sources = [], webhook = '', nextState = '', context = '', isGroupOnly = false, isPrivateOnly = false, description = '', triggerOn = 'incoming') {
+        function addNewRule(triggers = [], reply = '', sources = [], webhook = '', nextState = '', context = '', isGroupOnly = false, isPrivateOnly = false, description = '', triggerOn = 'incoming', chatTypes = ['group', 'private', 'channel']) {
             const card = document.createElement('div');
             card.className = 'auto-reply-card';
+
+            // Types rendering
+            const typesHtml = ['private', 'group', 'channel'].map(type => {
+                const isSelected = chatTypes.includes(type);
+                const activeClass = isSelected ? 'active-type' : '';
+                const style = isSelected
+                    ? 'background: rgba(6, 182, 212, 0.15); color: var(--primary); border: 1px solid rgba(6, 182, 212, 0.3);'
+                    : 'background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid transparent;';
+
+                const label = { 'private': 'פרטי', 'group': 'קבוצות', 'channel': 'ערוץ' }[type];
+
+                return `<div class="tag chat-type-selector ${activeClass}" 
+                             data-value="${type}" 
+                             onclick="toggleChatType(this)" 
+                             style="cursor: pointer; transition: all 0.2s; ${style}">
+                             ${label}
+                        </div>`;
+            }).join('');
+
             card.innerHTML = `
                 <div class="btn-delete-rule" onclick="this.parentElement.remove()">
                     <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
@@ -1334,11 +1362,9 @@ curl -X POST http://localhost:3000/api/send-message \
                         <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
                             <i data-lucide="map-pin" style="width:14px; color: var(--primary);"></i> איפה יפעל?
                         </span>
-                        <select class="rule-type-select" style="margin-top: 8px;">
-                            <option value="all" ${!isGroupOnly && !isPrivateOnly ? 'selected' : ''}>הכל (קבוצות ופרטי)</option>
-                            <option value="groups" ${isGroupOnly ? 'selected' : ''}>קבוצות בלבד</option>
-                            <option value="private" ${isPrivateOnly ? 'selected' : ''}>פרטי בלבד</option>
-                        </select>
+                        <div class="chat-types-container" style="margin-top: 8px; display: flex; gap: 8px;">
+                            ${typesHtml}
+                        </div>
                     </div>
                 </div>
 
@@ -1417,6 +1443,21 @@ curl -X POST http://localhost:3000/api/send-message \
             }
         }
 
+        function toggleChatType(el) {
+            const isActive = el.classList.contains('active-type');
+            if (isActive) {
+                el.classList.remove('active-type');
+                el.style.background = 'rgba(255, 255, 255, 0.05)';
+                el.style.color = 'var(--text-muted)';
+                el.style.borderColor = 'transparent';
+            } else {
+                el.classList.add('active-type');
+                el.style.background = 'rgba(6, 182, 212, 0.15)';
+                el.style.color = 'var(--primary)';
+                el.style.borderColor = 'rgba(6, 182, 212, 0.3)';
+            }
+        }
+
         async function saveAllConfig() {
             if (!selectedSessionId) {
                 alert('אנא בחר חשבון תחילה');
@@ -1432,9 +1473,9 @@ curl -X POST http://localhost:3000/api/send-message \
 
                 const sources = Array.from(card.querySelectorAll('.sources-container .tag')).map(t => t.dataset.value);
 
-                const typeSelect = card.querySelector('.rule-type-select');
-                const isGroupOnly = typeSelect ? typeSelect.value === 'groups' : false;
-                const isPrivateOnly = typeSelect ? typeSelect.value === 'private' : false;
+                const chatTypes = Array.from(card.querySelectorAll('.chat-type-selector.active-type')).map(el => el.dataset.value);
+                const isGroupOnly = chatTypes.includes('group') && !chatTypes.includes('private') && !chatTypes.includes('channel');
+                const isPrivateOnly = chatTypes.includes('private') && !chatTypes.includes('group') && !chatTypes.includes('channel');
 
                 const triggerOnSelect = card.querySelector('.rule-trigger-on-select');
                 const triggerOn = triggerOnSelect ? triggerOnSelect.value : 'incoming';
@@ -1451,6 +1492,7 @@ curl -X POST http://localhost:3000/api/send-message \
                     allowedSources: sources,
                     isGroupOnly,
                     isPrivateOnly,
+                    chatTypes,
                     triggerOn
                 });
             });

@@ -39,8 +39,21 @@ async function handleMessage(message, client, sessionId, logCallback) {
         const isGroupMsg = otherParty.endsWith('@g.us');
 
         // Filter by type if specified
-        if (rule.isGroupOnly && !isGroupMsg) continue;
-        if (rule.isPrivateOnly && isGroupMsg) continue;
+        // Filter by type if specified
+        const isNewsletterMsg = otherParty.endsWith('@newsletter');
+        const isPrivateMsg = !isGroupMsg && !isNewsletterMsg;
+
+        // Multi-select Chat Types (New Logic)
+        if (rule.chatTypes && Array.isArray(rule.chatTypes) && rule.chatTypes.length > 0) {
+            const currentType = isGroupMsg ? 'group' : (isNewsletterMsg ? 'channel' : 'private');
+            if (!rule.chatTypes.includes(currentType)) {
+                continue;
+            }
+        } else {
+            // Backward compatibility
+            if (rule.isGroupOnly && !isGroupMsg) continue;
+            if (rule.isPrivateOnly && isGroupMsg) continue;
+        }
 
         const allowedSources = rule.allowedSources || [];
         if (allowedSources.length > 0) {

@@ -176,13 +176,20 @@ function startSession(sessionId) {
     client.on('message_create', async (msg) => {
         try {
             // Safer way to get sender name without calling getContact() which is failing
-            let senderName = msg.fromMe ? 'אני' : (msg._data.notifyName || msg.from.split('@')[0]);
+            const senderNum = msg.fromMe ? 'Me' : (msg.author || msg.from).split('@')[0];
+            let senderName = msg.fromMe ? 'אני' : (msg._data.notifyName || senderNum);
+
+            if (senderName !== senderNum && senderNum !== 'Me') {
+                senderName += ` (${senderNum})`;
+            }
+
             let groupInfo = '';
 
             try {
                 const chat = await msg.getChat();
                 if (chat && chat.isGroup) {
-                    groupInfo = ` [קבוצה: ${chat.name}]`;
+                    const groupId = chat.id.user || chat.id._serialized.split('@')[0];
+                    groupInfo = ` [קבוצה: ${chat.name} (${groupId})]`;
                 }
             } catch (chatError) {
                 // If getChat fails, we just don't show group info
