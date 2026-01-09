@@ -19,8 +19,36 @@
           "replied": 5
         },
         "2026-01-02": {
-          "received": 49,
+          "received": 133,
           "replied": 0
+        },
+        "2026-01-03": {
+          "received": 285,
+          "replied": 6
+        },
+        "2026-01-04": {
+          "received": 272,
+          "replied": 10
+        },
+        "2026-01-05": {
+          "received": 292,
+          "replied": 12
+        },
+        "2026-01-06": {
+          "received": 289,
+          "replied": 8
+        },
+        "2026-01-07": {
+          "received": 374,
+          "replied": 7
+        },
+        "2026-01-08": {
+          "received": 332,
+          "replied": 7
+        },
+        "2026-01-09": {
+          "received": 223,
+          "replied": 9
         }
       },
       "triggers": {}
@@ -28,7 +56,35 @@
     "dean": {
       "daily": {
         "2026-01-02": {
-          "received": 8,
+          "received": 21,
+          "replied": 0
+        },
+        "2026-01-03": {
+          "received": 28,
+          "replied": 0
+        },
+        "2026-01-04": {
+          "received": 52,
+          "replied": 0
+        },
+        "2026-01-05": {
+          "received": 168,
+          "replied": 0
+        },
+        "2026-01-06": {
+          "received": 59,
+          "replied": 0
+        },
+        "2026-01-07": {
+          "received": 22,
+          "replied": 0
+        },
+        "2026-01-08": {
+          "received": 101,
+          "replied": 0
+        },
+        "2026-01-09": {
+          "received": 36,
           "replied": 0
         }
       },

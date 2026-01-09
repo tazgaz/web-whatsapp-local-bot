@@ -19,11 +19,40 @@ async function handleMessage(message, client, sessionId, logCallback) {
     const sender = message.from;
 
     // Get current user state - specific to this session
-    // If outgoing, context is typically 'self' or target, but we'll use 'to' for state tracking if it's an outgoing message to keep conversation state
-    // But for simplicity, we keep tracking based on the "other party" (from if incoming, to if outgoing)
     const otherParty = message.fromMe ? message.to : message.from;
     const stateKey = `${sessionId}_${otherParty}`;
     const currentState = userStates[stateKey] || '';
+
+    // --- Special Admin Commands (.lock / .unlock) ---
+    if (text === '.lock' || text === '.unlock') {
+        try {
+            const chat = await message.getChat();
+            if (chat.isGroup) {
+                // Determine if we should allow this (only if sent by me or an admin)
+                let canExecute = message.fromMe;
+
+                if (!canExecute) {
+                    const contact = await message.getContact();
+                    const participant = chat.participants.find(p => p.id._serialized === contact.id._serialized);
+                    if (participant && (participant.isAdmin || participant.isSuperAdmin)) {
+                        canExecute = true;
+                    }
+                }
+
+                if (canExecute) {
+                    const shouldLock = text === '.lock';
+                    await chat.setMessagesAdminsOnly(shouldLock);
+                    const response = shouldLock ? '🔒 הקבוצה ננעלה למשתתפים. רק מנהלים יכולים לשלוח הודעות.' : '🔓 הקבוצה נפתחה. כולם יכולים לשלוח הודעות עכשיו.';
+                    await message.reply(response);
+                    if (logCallback) logCallback(`⚙️ הגדרות קבוצה שונו: ${text} בקבוצה ${chat.name}`);
+                    return { replied: true, trigger: 'command' };
+                }
+            }
+        } catch (err) {
+            if (logCallback) logCallback(`✗ שגיאה בביצוע פקודת ניהול: ${err.message}`);
+            await message.reply('❌ שגיאה: וודא שהבוט הוא מנהל בקבוצה.');
+        }
+    }
 
     for (const rule of config.autoReplies) {
         // 0. Check Trigger Direction (Incoming/Outgoing)
