@@ -724,6 +724,32 @@ app.get('/api/group/members', async (req, res) => {
     }
 });
 
+app.post('/api/group/rename', async (req, res) => {
+    const { groupId, newName, sessionId } = req.body;
+    const sid = sessionId || 'default';
+
+    if (!groupId || !newName) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: 'Session not ready' });
+    }
+
+    try {
+        const chat = await session.client.getChatById(groupId);
+        if (!chat.isGroup) return res.status(400).json({ error: 'Not a group' });
+
+        await chat.setSubject(newName);
+        logToUI(sid, `📝 שם הקבוצה ${groupId} שונה ל-"${newName}"`);
+        res.json({ success: true, newName });
+    } catch (err) {
+        logToUI(sid, `✗ שגיאה בשינוי שם קבוצה: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/group/member-action', async (req, res) => {
     const { groupId, participantId, action, sessionId } = req.body;
     const sid = sessionId || 'default';

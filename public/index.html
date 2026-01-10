@@ -1158,7 +1158,14 @@ curl -X POST http://localhost:3000/api/send-message \
     <div id="members-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modal-group-name" class="modal-title rajdhani">חברי הקבוצה</h3>
+                <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+                    <h3 id="modal-group-name" class="modal-title rajdhani"
+                        style="margin:0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">חברי הקבוצה
+                    </h3>
+                    <button id="btn-rename-group" class="btn-action" title="שנה שם קבוצה">
+                        <i data-lucide="edit-2" style="width: 14px;"></i>
+                    </button>
+                </div>
                 <span class="close-modal" onclick="closeMembersModal()">
                     <i data-lucide="x" style="width: 24px; height: 24px;"></i>
                 </span>
@@ -1466,12 +1473,45 @@ curl -X POST http://localhost:3000/api/send-message \
             }
         }
 
+        async function renameGroup(groupId, currentName) {
+            const newName = prompt(`הכנס שם חדש לקבוצה:`, currentName);
+            if (!newName || newName === currentName) return;
+
+            try {
+                const res = await fetch('/api/group/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: selectedSessionId,
+                        groupId,
+                        newName
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    alert('✅ שם הקבוצה שונה בהצלחה!');
+                    document.getElementById('modal-group-name').innerText = newName;
+                    loadManagedGroups(); // Refresh the list in the background
+                } else {
+                    alert(`❌ שגיאה: ${data.error}`);
+                }
+            } catch (err) {
+                alert('❌ שגיאת תקשורת');
+            }
+        }
+
         async function showGroupMembers(groupId, groupName) {
             const modal = document.getElementById('members-modal');
             const list = document.getElementById('members-list');
             const title = document.getElementById('modal-group-name');
 
-            title.innerText = `חברים ב: ${groupName}`;
+            title.innerText = groupName;
+
+            // Set up rename button
+            const renameBtn = document.getElementById('btn-rename-group');
+            renameBtn.onclick = () => renameGroup(groupId, groupName);
+
             list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div></div>';
             modal.style.display = 'flex';
 
