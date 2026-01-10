@@ -653,6 +653,27 @@
             padding: 2px 6px;
             border-radius: 4px;
         }
+
+        .group-status-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 8px;
+            text-transform: uppercase;
+        }
+
+        .badge-locked {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-unlocked {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
     </style>
 </head>
 
@@ -1190,8 +1211,13 @@ curl -X POST http://localhost:3000/api/send-message \
                                 setTimeout(() => div.style.background = '', 300);
                             };
                             div.innerHTML = `
-                                <div class="group-name" title="${group.name}">${group.name}</div>
-                                <div class="group-participants">${group.participantsCount} חברים</div>
+                                <div style="display: flex; align-items: center; overflow: hidden; flex-grow: 1;">
+                                    <span class="group-status-badge ${group.isLocked ? 'badge-locked' : 'badge-unlocked'}">
+                                        ${group.isLocked ? 'נעול' : 'פתוח'}
+                                    </span>
+                                    <div class="group-name" title="${group.name}">${group.name}</div>
+                                </div>
+                                <div class="group-participants">${group.participantsCount}</div>
                             `;
                             container.appendChild(div);
                         });

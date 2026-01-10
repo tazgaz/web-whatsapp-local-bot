@@ -633,7 +633,8 @@ app.get('/api/groups', async (req, res) => {
             .map(chat => ({
                 id: chat.id._serialized,
                 name: chat.name,
-                participantsCount: (chat.participants || []).length
+                participantsCount: (chat.participants || []).length,
+                isLocked: chat.announce // true if only admins can send messages
             }));
 
         console.log(`[API] Found ${groups.length} managed groups`);
