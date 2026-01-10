@@ -603,6 +603,112 @@ app.post('/api/group/unlock', async (req, res) => {
     }
 });
 
+app.get('/api/group/members', async (req, res) => {
+    const { groupId, sessionId } = req.query;
+    const sid = sessionId || 'default';
+
+    if (!groupId) return res.status(400).json({ error: 'Missing groupId' });
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
+    }
+
+    try {
+        const chat = await session.client.getChatById(groupId);
+        if (!chat.isGroup) return res.status(400).json({ error: 'Not a group' });
+
+        const members = await Promise.all(chat.participants.map(async (p) => {
+            try {
+                // Using getContact() which is more reliable for fetching the contact object
+                const contact = await session.client.getContactById(p.id._serialized);
+
+                return {
+                    id: p.id._serialized,
+                    name: contact.name || contact.pushname || "", // Clear name or empty
+                    number: p.id.user,
+                    isAdmin: p.isAdmin,
+                    isSuperAdmin: p.isSuperAdmin
+                };
+            } catch (e) {
+                return {
+                    id: p.id._serialized,
+                    name: "",
+                    number: p.id.user,
+                    isAdmin: p.isAdmin
+                };
+            }
+        }));
+
+        res.json({ success: true, members });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/group/member-action', async (req, res) => {
+    const { groupId, participantId, action, sessionId } = req.body;
+    const sid = sessionId || 'default';
+
+    if (!groupId || !participantId || !action) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: 'Session not ready' });
+    }
+
+    try {
+        const chat = await session.client.getChatById(groupId);
+        if (!chat.isGroup) return res.status(400).json({ error: 'Not a group' });
+
+        let resultMsg = '';
+        if (action === 'remove') {
+            await chat.removeParticipants([participantId]);
+            resultMsg = `הוסר מהקבוצה`;
+        } else if (action === 'promote') {
+            await chat.promoteParticipants([participantId]);
+            resultMsg = `התמנה למנהל`;
+        } else if (action === 'demote') {
+            await chat.demoteParticipants([participantId]);
+            resultMsg = `הוסר מניהול`;
+        } else {
+            return res.status(400).json({ error: 'Invalid action' });
+        }
+
+        logToUI(sid, `👥 פעולה "${action}" בוצעה על ${participantId} בקבוצה "${chat.name}"`);
+        res.json({ success: true, message: resultMsg });
+    } catch (err) {
+        logToUI(sid, `✗ שגיאה בביצוע פעולה בקבוצה: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/group/leave', async (req, res) => {
+    const { groupId, sessionId } = req.body;
+    const sid = sessionId || 'default';
+
+    if (!groupId) return res.status(400).json({ error: 'Missing groupId' });
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
+    }
+
+    try {
+        const chat = await session.client.getChatById(groupId);
+        if (!chat.isGroup) return res.status(400).json({ error: 'Not a group' });
+
+        await chat.leave();
+        logToUI(sid, `🚪 יצאת מהקבוצה "${chat.name}"`);
+        res.json({ success: true, message: 'Left group successfully' });
+    } catch (err) {
+        logToUI(sid, `✗ שגיאה ביציאה מהקבוצה: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/groups', async (req, res) => {
     const { sessionId } = req.query;
     const sid = sessionId || 'default';

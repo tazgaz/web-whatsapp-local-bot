@@ -681,6 +681,137 @@
             border: 1px solid rgba(34, 197, 94, 0.5);
             box-shadow: 0 0 10px rgba(34, 197, 94, 0.1);
         }
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 20px;
+            width: 450px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
+        }
+
+        .modal-title {
+            color: var(--primary);
+            font-size: 1.2rem;
+            margin: 0;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            gap: 15px;
+        }
+
+        .member-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-action:hover {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--primary);
+            border-color: rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-action.danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border-color: var(--danger);
+            transform: scale(1.1);
+        }
+
+        .btn-remove-large {
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-remove-large:hover {
+            background: var(--danger);
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .member-name {
+            font-size: 0.95rem;
+            color: var(--text);
+        }
+
+        .member-admin {
+            font-size: 0.7rem;
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        .close-modal {
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: var(--danger);
+        }
     </style>
 </head>
 
@@ -1023,6 +1154,20 @@ curl -X POST http://localhost:3000/api/send-message \
         </div>
     </div>
 
+    <div id="members-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-group-name" class="modal-title rajdhani">חברי הקבוצה</h3>
+                <span class="close-modal" onclick="closeMembersModal()">
+                    <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+                </span>
+            </div>
+            <div id="members-list">
+                <!-- Members will be loaded here -->
+            </div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -1211,12 +1356,16 @@ curl -X POST http://localhost:3000/api/send-message \
                         data.groups.forEach(group => {
                             const div = document.createElement('div');
                             div.className = 'group-item';
-                            div.onclick = () => {
+                            // Clicking the main area selects the ID
+                            div.onclick = (e) => {
+                                // If clicked on the participants count OR leave button, don't trigger the ID selection
+                                if (e.target.classList.contains('group-participants') || e.target.closest('.btn-leave-group')) return;
+
                                 document.getElementById('group-id-input').value = group.id;
-                                // Subtle feedback
                                 div.style.background = 'rgba(6, 182, 212, 0.2)';
                                 setTimeout(() => div.style.background = '', 300);
                             };
+
                             div.innerHTML = `
                                 <div style="display: flex; align-items: center; overflow: hidden; flex-grow: 1;">
                                     <span class="group-status-badge ${group.isLocked ? 'badge-locked' : 'badge-unlocked'}">
@@ -1224,7 +1373,12 @@ curl -X POST http://localhost:3000/api/send-message \
                                     </span>
                                     <div class="group-name" title="${group.name}">${group.name}</div>
                                 </div>
-                                <div class="group-participants">${group.participantsCount}</div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div class="group-participants" onclick="showGroupMembers('${group.id}', '${group.name.replace(/'/g, "\\'")}')" title="הצג משתתפים" style="cursor: pointer;">${group.participantsCount}</div>
+                                    <button class="btn-leave-group" onclick="leaveGroup('${group.id}', '${group.name.replace(/'/g, "\\'")}')" title="צא מהקבוצה" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 4px; display: flex; align-items: center; opacity: 0.6; transition: opacity 0.2s;">
+                                        <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+                                    </button>
+                                </div>
                             `;
                             container.appendChild(div);
                         });
@@ -1304,6 +1458,125 @@ curl -X POST http://localhost:3000/api/send-message \
                 }
             } catch (err) {
                 alert('❌ שגיאה בתקשורת: ' + err.message);
+            }
+        }
+
+        async function showGroupMembers(groupId, groupName) {
+            const modal = document.getElementById('members-modal');
+            const list = document.getElementById('members-list');
+            const title = document.getElementById('modal-group-name');
+
+            title.innerText = `חברים ב: ${groupName}`;
+            list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div></div>';
+            modal.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/group/members?sessionId=${selectedSessionId}&groupId=${groupId}`);
+                const data = await res.json();
+
+                if (res.ok && data.members) {
+                    list.innerHTML = '';
+                    data.members.forEach(member => {
+                        const div = document.createElement('div');
+                        div.className = 'member-item';
+
+                        // If name is found, show it. Otherwise show number as main.
+                        const hasName = member.name && member.name !== member.number;
+                        const displayName = hasName ? member.name : member.number;
+                        const subText = hasName ? member.number : '';
+
+                        div.innerHTML = `
+                            <div style="display: flex; flex-direction: column; overflow: hidden; flex-grow: 1;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="member-name" style="font-weight: 700; font-size: 1rem;">${displayName}</span>
+                                    ${member.isAdmin ? '<span class="member-admin">מנהל</span>' : ''}
+                                </div>
+                                ${subText ? `<span style="font-size: 0.8rem; color: var(--text-muted); direction: ltr; text-align: right; margin-top: 2px;">${subText}</span>` : ''}
+                            </div>
+                            <div class="member-actions" style="align-items: center;">
+                                ${member.isAdmin ?
+                                `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'demote', '${groupName.replace(/'/g, "\\'")}')" title="הסר מניהול">
+                                        <i data-lucide="shield-off" style="width:14px;"></i> הסר ניהול
+                                    </button>` :
+                                `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'promote', '${groupName.replace(/'/g, "\\'")}')" title="הפוך למנהל">
+                                        <i data-lucide="shield-check" style="width:14px;"></i> מנהל
+                                    </button>`
+                            }
+                                <div class="btn-remove-large" onclick="memberAction('${groupId}', '${member.id}', 'remove', '${groupName.replace(/'/g, "\\'")}')" title="הסר מהקבוצה">
+                                    <i data-lucide="x" style="width:20px; height:20px; stroke-width: 3;"></i>
+                                </div>
+                            </div>
+                        `;
+                        list.appendChild(div);
+                    });
+                } else {
+                    list.innerHTML = `<p style="color: var(--danger); text-align: center;">שגיאה: ${data.error || 'לא ניתן לטעון משתתפים'}</p>`;
+                }
+            } catch (err) {
+                list.innerHTML = '<p style="color: var(--danger); text-align: center;">שגיאת תקשורת</p>';
+            }
+            lucide.createIcons();
+        }
+
+        function closeMembersModal() {
+            document.getElementById('members-modal').style.display = 'none';
+        }
+
+        async function memberAction(groupId, participantId, action, groupName) {
+            const actionLabels = { 'remove': 'להסיר מהקבוצה', 'promote': 'להפוך למנהל', 'demote': 'להסיר מניהול' };
+            const confirmMsg = `האם אתה בטוח שברצונך ${actionLabels[action]} את המשתתף?`;
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch('/api/group/member-action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: selectedSessionId,
+                        groupId,
+                        participantId,
+                        action
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`✅ הפעולה בוצעה: ${data.message}`);
+                    showGroupMembers(groupId, groupName); // Refresh members list
+                } else {
+                    alert(`❌ שגיאה: ${data.error}`);
+                }
+            } catch (err) {
+                alert('❌ שגיאת תקשורת');
+            }
+        }
+
+        async function leaveGroup(groupId, groupName) {
+            const confirmLeave = confirm(`⚠️ אזהרה!\n\nהאם אתה בטוח שברצונך לצאת מהקבוצה "${groupName}"?\nהפעולה אינה ניתנת לביטול דרך המערכת.`);
+
+            if (confirmLeave) {
+                try {
+                    const res = await fetch('/api/group/leave', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: selectedSessionId,
+                            groupId: groupId
+                        })
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        alert(`🚪 יצאת מהקבוצה "${groupName}" בהצלחה.`);
+                        loadManagedGroups(); // Refresh list
+                    } else {
+                        alert('❌ שגיאה: ' + (data.error || 'שגיאה לא ידועה'));
+                    }
+                } catch (err) {
+                    alert('❌ שגיאה בתקשורת: ' + err.message);
+                }
             }
         }
 
