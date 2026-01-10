@@ -25,3 +25,6 @@ logs/
 sessions.json
 user_states.json
 stats.json
+
+# Contacts Cache
+contacts_cache.json

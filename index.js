@@ -23,6 +23,61 @@ if (!fs.existsSync(SESSIONS_FILE)) {
     fs.writeFileSync(SESSIONS_FILE, JSON.stringify(['default'], null, 2));
 }
 
+// Contacts Cache for learning names
+let contactsCache = {};
+const CONTACTS_CACHE_PATH = path.join(__dirname, 'contacts_cache.json');
+
+function loadContactsCache() {
+    try {
+        if (fs.existsSync(CONTACTS_CACHE_PATH)) {
+            contactsCache = JSON.parse(fs.readFileSync(CONTACTS_CACHE_PATH, 'utf8'));
+        }
+    } catch (e) {
+        console.error('Error loading contacts cache:', e);
+    }
+}
+
+function saveContactsCache() {
+    try {
+        fs.writeFileSync(CONTACTS_CACHE_PATH, JSON.stringify(contactsCache, null, 2));
+    } catch (e) {
+        console.error('Error saving contacts cache:', e);
+    }
+}
+
+function updateContactCache(number, name) {
+    if (!number || !name || name === number) return;
+    // Don't overwrite if it's "ללא שם" or something generic
+    if (['ללא שם', 'לא נמצא', 'null', 'undefined'].includes(name)) return;
+
+    if (contactsCache[number] !== name) {
+        contactsCache[number] = name;
+        saveContactsCache();
+    }
+}
+
+loadContactsCache();
+
+// Helper to get name from cache or contact object
+async function resolveBestName(client, id) {
+    const number = id.user;
+
+    // 1. Check local cache first
+    if (contactsCache[number]) return contactsCache[number];
+
+    try {
+        const contact = await client.getContactById(id._serialized);
+        const name = contact.name || contact.pushname || contact.shortName;
+
+        if (name) {
+            updateContactCache(number, name);
+            return name;
+        }
+    } catch (e) { }
+
+    return "";
+}
+
 const activeSessions = {}; // { id: { client, status, qr } }
 
 // Stats management
@@ -178,6 +233,12 @@ function startSession(sessionId) {
             // Safer way to get sender name without calling getContact() which is failing
             const senderNum = msg.fromMe ? 'Me' : (msg.author || msg.from).split('@')[0];
             let senderName = msg.fromMe ? 'אני' : (msg._data.notifyName || senderNum);
+
+            // Learn name from message metadata
+            if (!msg.fromMe && msg._data.notifyName) {
+                const actualSenderNum = (msg.author || msg.from).split('@')[0];
+                updateContactCache(actualSenderNum, msg._data.notifyName);
+            }
 
             if (senderName !== senderNum && senderNum !== 'Me') {
                 senderName += ` (${senderNum})`;
@@ -618,27 +679,42 @@ app.get('/api/group/members', async (req, res) => {
         const chat = await session.client.getChatById(groupId);
         if (!chat.isGroup) return res.status(400).json({ error: 'Not a group' });
 
-        const members = await Promise.all(chat.participants.map(async (p) => {
+        const members = [];
+        // Process members - we'll try to force a fetch for names that are missing
+        for (const p of chat.participants) {
             try {
-                // Using getContact() which is more reliable for fetching the contact object
-                const contact = await session.client.getContactById(p.id._serialized);
+                // Use the new resolution logic
+                let name = await resolveBestName(session.client, p.id);
 
-                return {
+                // If still no name, try the "poke" method
+                if (!name) {
+                    try {
+                        const contact = await session.client.getContactById(p.id._serialized);
+                        await Promise.race([
+                            contact.getAbout(),
+                            new Promise(resolve => setTimeout(resolve, 500))
+                        ]);
+                        name = (await session.client.getContactById(p.id._serialized)).pushname || "";
+                        if (name) updateContactCache(p.id.user, name);
+                    } catch (pokeErr) { }
+                }
+
+                members.push({
                     id: p.id._serialized,
-                    name: contact.name || contact.pushname || "", // Clear name or empty
+                    name: name || "",
                     number: p.id.user,
                     isAdmin: p.isAdmin,
                     isSuperAdmin: p.isSuperAdmin
-                };
+                });
             } catch (e) {
-                return {
+                members.push({
                     id: p.id._serialized,
-                    name: "",
+                    name: contactsCache[p.id.user] || "",
                     number: p.id.user,
                     isAdmin: p.isAdmin
-                };
+                });
             }
-        }));
+        }
 
         res.json({ success: true, members });
     } catch (err) {

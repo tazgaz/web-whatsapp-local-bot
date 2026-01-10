@@ -769,12 +769,12 @@
         }
 
         .btn-remove-large {
-            color: var(--danger);
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 8px;
-            width: 36px;
-            height: 36px;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.15);
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            border-radius: 10px;
+            width: 42px;
+            height: 42px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -783,10 +783,11 @@
         }
 
         .btn-remove-large:hover {
-            background: var(--danger);
+            background: #ef4444;
             color: white;
-            transform: scale(1.1);
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+            transform: scale(1.15);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+            border-color: #ef4444;
         }
 
         .member-name {
@@ -1295,6 +1296,10 @@ curl -X POST http://localhost:3000/api/send-message \
 
         function selectSession(id) {
             selectedSessionId = id;
+
+            // Close the members modal if it's open
+            closeMembersModal();
+
             // Update the text span inside the badge, preserving the icon
             const indicatorText = document.getElementById('header-session-name');
             if (indicatorText) indicatorText.innerText = id;
@@ -1480,20 +1485,20 @@ curl -X POST http://localhost:3000/api/send-message \
                         const div = document.createElement('div');
                         div.className = 'member-item';
 
-                        // If name is found, show it. Otherwise show number as main.
-                        const hasName = member.name && member.name !== member.number;
+                        // If name is found and not just the number again
+                        const hasName = member.name && member.name.length > 0 && member.name !== member.number && !member.name.includes('@');
                         const displayName = hasName ? member.name : member.number;
-                        const subText = hasName ? member.number : '';
+                        const subText = hasName ? member.number : 'ללא שם שמור';
 
                         div.innerHTML = `
                             <div style="display: flex; flex-direction: column; overflow: hidden; flex-grow: 1;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="member-name" style="font-weight: 700; font-size: 1rem;">${displayName}</span>
+                                    <span class="member-name" style="font-weight: 700; font-size: 1.05rem; color: ${hasName ? 'var(--primary)' : 'var(--text)'}">${displayName}</span>
                                     ${member.isAdmin ? '<span class="member-admin">מנהל</span>' : ''}
                                 </div>
-                                ${subText ? `<span style="font-size: 0.8rem; color: var(--text-muted); direction: ltr; text-align: right; margin-top: 2px;">${subText}</span>` : ''}
+                                <span style="font-size: 0.8rem; color: var(--text-muted); direction: ltr; text-align: right; margin-top: 2px; font-family: monospace;">${subText}</span>
                             </div>
-                            <div class="member-actions" style="align-items: center;">
+                            <div class="member-actions" style="align-items: center; gap: 12px;">
                                 ${member.isAdmin ?
                                 `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'demote', '${groupName.replace(/'/g, "\\'")}')" title="הסר מניהול">
                                         <i data-lucide="shield-off" style="width:14px;"></i> הסר ניהול
