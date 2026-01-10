@@ -1176,9 +1176,18 @@ curl -X POST http://localhost:3000/api/send-message \
                         </div>
                     </div>
 
-                    <div style="margin-bottom: 15px;">
+                    <div style="margin-bottom: 15px; display: flex; gap: 10px;">
                         <input type="text" id="contact-search" placeholder="חיפוש לפי שם או מספר..."
-                            oninput="filterContacts()">
+                            oninput="filterContacts()" style="flex-grow: 1;">
+
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="setContactFilter('all')" class="btn-quick-filter active"
+                                id="btn-filter-all">הכל</button>
+                            <button onclick="setContactFilter('private')" class="btn-quick-filter"
+                                id="btn-filter-private">פרטי</button>
+                            <button onclick="setContactFilter('group')" class="btn-quick-filter"
+                                id="btn-filter-group">קבוצות</button>
+                        </div>
                     </div>
 
                     <div
@@ -1186,9 +1195,24 @@ curl -X POST http://localhost:3000/api/send-message \
                         <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.9rem;">
                             <thead>
                                 <tr style="background: rgba(6, 182, 212, 0.1); color: var(--primary);">
-                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">שם</th>
-                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">מספר</th>
-                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">סוג</th>
+                                    <th style="padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;"
+                                        onclick="sortContacts('name')">
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            שם <span id="sort-icon-name" class="sort-icon"></span>
+                                        </div>
+                                    </th>
+                                    <th style="padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;"
+                                        onclick="sortContacts('number')">
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            מספר <span id="sort-icon-number" class="sort-icon"></span>
+                                        </div>
+                                    </th>
+                                    <th style="padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;"
+                                        onclick="sortContacts('type')">
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            סוג <span id="sort-icon-type" class="sort-icon"></span>
+                                        </div>
+                                    </th>
                                     <th style="padding: 12px; border-bottom: 1px solid var(--border);">פעולות</th>
                                 </tr>
                             </thead>
@@ -1988,13 +2012,103 @@ curl -X POST http://localhost:3000/api/send-message \
             lucide.createIcons();
         }
 
-        function filterContacts() {
+        let currentContactFilter = 'all';
+        let currentSortColumn = 'name'; // name, number, type
+        let currentSortDirection = 'asc'; // asc, desc
+
+        function setContactFilter(type) {
+            currentContactFilter = type;
+
+            // Update active buttons
+            document.querySelectorAll('#contacts-section .btn-quick-filter').forEach(btn => {
+                btn.classList.remove('active');
+                // Reset style
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--text-muted)';
+                btn.style.borderColor = 'var(--border)';
+            });
+
+            const activeBtn = document.getElementById(`btn-filter-${type}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.style.background = 'rgba(6, 182, 212, 0.15)';
+                activeBtn.style.color = 'var(--primary)';
+                activeBtn.style.borderColor = 'rgba(6, 182, 212, 0.3)';
+            }
+
+            filterContacts();
+        }
+
+        function sortContacts(column) {
+            if (currentSortColumn === column) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = column;
+                currentSortDirection = 'asc';
+            }
+
+            updateSortIcons();
+            filterContacts();
+        }
+
+        function updateSortIcons() {
+            // Reset all icons
+            document.querySelectorAll('.sort-icon').forEach(el => el.innerHTML = '');
+
+            const iconEl = document.getElementById(`sort-icon-${currentSortColumn}`);
+            if (iconEl) {
+                // Using simple text arrows for simplicity, or could use Lucide icons
+                iconEl.innerHTML = currentSortDirection === 'asc' ? '▲' : '▼';
+                iconEl.style.fontSize = '0.7em';
+                iconEl.style.opacity = '0.7';
+            }
+        }
+
+        function getProcessedContacts() {
+            let filtered = [...currentContacts];
+
+            // 1. Filter by Search
             const query = document.getElementById('contact-search').value.toLowerCase();
-            const filtered = currentContacts.filter(c =>
-                (c.name && c.name.toLowerCase().includes(query)) ||
-                (c.number && c.number.includes(query))
-            );
-            renderContacts(filtered);
+            if (query) {
+                filtered = filtered.filter(c =>
+                    (c.name && c.name.toLowerCase().includes(query)) ||
+                    (c.number && c.number.includes(query))
+                );
+            }
+
+            // 2. Filter by Type
+            if (currentContactFilter === 'private') {
+                filtered = filtered.filter(c => !c.isGroup);
+            } else if (currentContactFilter === 'group') {
+                filtered = filtered.filter(c => c.isGroup);
+            }
+
+            // 3. Sort
+            filtered.sort((a, b) => {
+                let valA, valB;
+
+                if (currentSortColumn === 'name') {
+                    valA = (a.name || '').toLowerCase();
+                    valB = (b.name || '').toLowerCase();
+                } else if (currentSortColumn === 'number') {
+                    valA = a.number;
+                    valB = b.number;
+                } else if (currentSortColumn === 'type') {
+                    valA = a.isGroup ? 1 : 0;
+                    valB = b.isGroup ? 1 : 0;
+                }
+
+                if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            return filtered;
+        }
+
+        function filterContacts() {
+            const processed = getProcessedContacts();
+            renderContacts(processed);
         }
 
         function quickMessage(number) {
