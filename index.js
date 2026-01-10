@@ -603,6 +603,48 @@ app.post('/api/group/unlock', async (req, res) => {
     }
 });
 
+app.get('/api/groups', async (req, res) => {
+    const { sessionId } = req.query;
+    const sid = sessionId || 'default';
+
+    console.log(`[API] Fetching groups for session: ${sid}`);
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        console.log(`[API] Session ${sid} is NOT ready (status: ${session ? session.status : 'N/A'})`);
+        return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
+    }
+
+    try {
+        console.log(`[API] Calling getChats() for ${sid}...`);
+        const chats = await session.client.getChats();
+        console.log(`[API] Got ${chats.length} chats`);
+
+        const me = session.client.info.wid._serialized;
+        console.log(`[API] My ID: ${me}`);
+
+        const groups = chats
+            .filter(chat => chat.isGroup)
+            .filter(chat => {
+                // Check if user is an admin
+                const amIAdmin = chat.participants && chat.participants.some(p => p.id._serialized === me && p.isAdmin);
+                return amIAdmin;
+            })
+            .map(chat => ({
+                id: chat.id._serialized,
+                name: chat.name,
+                participantsCount: (chat.participants || []).length
+            }));
+
+        console.log(`[API] Found ${groups.length} managed groups`);
+        res.json({ success: true, groups });
+    } catch (err) {
+        console.error(`[API] Error in /api/groups for ${sid}:`, err);
+        logToUI(sid, `✗ שגיאה בקבלת רשימת קבוצות: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/logout', async (req, res) => {
     const { sessionId } = req.body;
     const sid = sessionId || 'default';

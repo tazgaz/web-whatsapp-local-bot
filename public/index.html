@@ -615,6 +615,44 @@
             border-color: rgba(6, 182, 212, 0.3);
             transform: translateY(-1px);
         }
+
+        .group-item {
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid transparent;
+        }
+
+        .group-item:hover {
+            background: rgba(6, 182, 212, 0.08);
+            border-color: rgba(6, 182, 212, 0.2);
+        }
+
+        .group-name {
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .group-participants {
+            color: var(--primary);
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 0.8rem;
+            background: rgba(6, 182, 212, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 
@@ -896,6 +934,29 @@ curl -X POST http://localhost:3000/api/send-message \
                             </button>
                         </div>
 
+                        <div style="margin-top: 25px; border-top: 1px solid var(--border); padding-top: 20px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h3 class="rajdhani"
+                                    style="font-size: 0.95rem; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="users" style="width: 16px; color: var(--primary);"></i> קבוצות
+                                    בניהולך
+                                </h3>
+                                <button onclick="loadManagedGroups()" class="btn-quick-filter"
+                                    style="font-size: 0.65rem; padding: 2px 8px;">
+                                    <i data-lucide="refresh-cw"
+                                        style="width: 10px; margin-left: 4px; display: inline-block; vertical-align: middle;"></i>
+                                    רענן רשימה
+                                </button>
+                            </div>
+                            <div id="managed-groups-container"
+                                style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.15); border-radius: 12px; border: 1px solid var(--border); padding: 8px;">
+                                <p
+                                    style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">
+                                    לחץ על "רענן רשימה" כדי לראות קבוצות בניהולך</p>
+                            </div>
+                        </div>
+
                         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);">
                             <h3 class="rajdhani" style="font-size: 0.95rem; color: var(--text); margin-bottom: 15px;">
                                 <i data-lucide="code" style="width: 16px; margin-left: 6px;"></i> API לנעילת קבוצות:
@@ -969,6 +1030,9 @@ curl -X POST http://localhost:3000/api/send-message \
             renderSessionList();
             if (selectedSessionId === data.sessionId) {
                 updateUIForSession(sessions[selectedSessionId]);
+                if (data.status === 'READY') {
+                    loadManagedGroups();
+                }
             }
         });
 
@@ -1077,6 +1141,69 @@ curl -X POST http://localhost:3000/api/send-message \
             loadConfig(); // Load config for this session
             loadLogs(id); // Load logs for this session
             updateDashboardCharts(); // Redraw dashboard for the new session
+            loadManagedGroups(); // Load managed groups
+        }
+
+        async function loadManagedGroups() {
+            if (!selectedSessionId) return;
+
+            const container = document.getElementById('managed-groups-container');
+            if (!container) return;
+
+            // Only show loader if we have a session
+            container.innerHTML = '<div style="text-align:center; padding: 15px;"><div class="loader" style="width:20px; height:20px; margin: 0 auto; border-width: 2px;"></div></div>';
+
+            try {
+                console.log('Fetching managed groups for:', selectedSessionId);
+                const res = await fetch(`/api/groups?sessionId=${selectedSessionId}`);
+
+                if (res.status === 404) {
+                    container.innerHTML = '<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 15px;">שגיאה: השרת לא מזהה את הפקודה (404). נסה לרענן את הדף.</p>';
+                    return;
+                }
+
+                if (res.status === 503) {
+                    container.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">החשבון עדיין בטעינה... נסה שוב בעוד רגע</p>';
+                    return;
+                }
+
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new TypeError("השרת החזיר תשובה שאינה JSON");
+                }
+
+                const data = await res.json();
+                console.log('Group data received:', data);
+
+                if (res.ok && data.groups) {
+                    if (data.groups.length === 0) {
+                        container.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">לא נמצאו קבוצות בניהולך</p>';
+                    } else {
+                        container.innerHTML = '';
+                        data.groups.forEach(group => {
+                            const div = document.createElement('div');
+                            div.className = 'group-item';
+                            div.onclick = () => {
+                                document.getElementById('group-id-input').value = group.id;
+                                // Subtle feedback
+                                div.style.background = 'rgba(6, 182, 212, 0.2)';
+                                setTimeout(() => div.style.background = '', 300);
+                            };
+                            div.innerHTML = `
+                                <div class="group-name" title="${group.name}">${group.name}</div>
+                                <div class="group-participants">${group.participantsCount} חברים</div>
+                            `;
+                            container.appendChild(div);
+                        });
+                    }
+                } else {
+                    container.innerHTML = `<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 10px;">שגיאה: ${data.error || 'לא ניתן לטעון קבוצות'}</p>`;
+                }
+            } catch (err) {
+                console.error('Fetch error:', err);
+                container.innerHTML = `<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 10px;">שגיאת תקשורת עם השרת</p>`;
+            }
+            lucide.createIcons();
         }
 
         async function lockGroup() {
