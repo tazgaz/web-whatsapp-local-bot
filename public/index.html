@@ -1241,6 +1241,10 @@ curl -X POST http://localhost:3000/api/send-message \
                     <button id="btn-rename-group" class="btn-action" title="שנה שם קבוצה">
                         <i data-lucide="edit-2" style="width: 14px;"></i>
                     </button>
+                    <button id="btn-export-group" class="btn-action" title="ייצא חברי קבוצה ל-CSV"
+                        style="color: var(--primary); border-color: rgba(6, 182, 212, 0.4);">
+                        <i data-lucide="download" style="width: 14px; margin-left: 4px;"></i> ייצא CSV
+                    </button>
                 </div>
                 <span class="close-modal" onclick="closeMembersModal()">
                     <i data-lucide="x" style="width: 24px; height: 24px;"></i>
@@ -1403,6 +1407,14 @@ curl -X POST http://localhost:3000/api/send-message \
             loadLogs(id); // Load logs for this session
             updateDashboardCharts(); // Redraw dashboard for the new session
             loadManagedGroups(); // Load managed groups
+
+            // Reload contacts if we are currently on the contacts tab
+            if (document.getElementById('contacts-section').classList.contains('active')) {
+                loadContacts();
+            } else {
+                // Clear the list so it doesn't show stale data when we do switch to it
+                currentContacts = [];
+            }
         }
 
         async function loadManagedGroups() {
@@ -1641,9 +1653,12 @@ curl -X POST http://localhost:3000/api/send-message \
 
             title.innerText = groupName;
 
-            // Set up rename button
+            // Set up rename and export buttons
             const renameBtn = document.getElementById('btn-rename-group');
             renameBtn.onclick = () => renameGroup(groupId, groupName);
+
+            const exportBtn = document.getElementById('btn-export-group');
+            exportBtn.onclick = () => exportGroupMembersCSV(groupName);
 
             list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div><p style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">טוען נתונים...</p></div>';
             modal.style.display = 'flex';
@@ -2190,6 +2205,35 @@ curl -X POST http://localhost:3000/api/send-message \
             document.body.removeChild(link);
         }
 
+        function exportGroupMembersCSV(groupName) {
+            if (!window.lastGroupMembers || window.lastGroupMembers.length === 0) {
+                alert('אין נתונים לייצוא');
+                return;
+            }
+
+            const headers = ['Name', 'Number', 'Admin Status'];
+            const rows = window.lastGroupMembers.map(m => [
+                m.name || '',
+                m.number,
+                m.isAdmin ? 'Admin' : 'Member'
+            ]);
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(r => r.map(val => `"${val.replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `members_${groupName.replace(/[^א-תa-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function switchTab(tab) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -2208,7 +2252,7 @@ curl -X POST http://localhost:3000/api/send-message \
             if (tab === 'logs') {
                 loadLogs(selectedSessionId);
             }
-            if (tab === 'contacts' && currentContacts.length === 0) {
+            if (tab === 'contacts') {
                 loadContacts();
             }
             lucide.createIcons();
