@@ -1485,31 +1485,33 @@ curl -X POST http://localhost:3000/api/send-message \
                         const div = document.createElement('div');
                         div.className = 'member-item';
 
-                        // If name is found and not just the number again
-                        const hasName = member.name && member.name.length > 0 && member.name !== member.number && !member.name.includes('@');
-                        const displayName = hasName ? member.name : member.number;
-                        const subText = hasName ? member.number : 'ללא שם שמור';
+                        // Special handling for the bot itself
+                        let displayName = member.isMe ? "אני (הבוט)" : (member.name || member.number);
+                        let subText = member.isMe ? member.number : (member.name && member.name !== member.number ? member.number : 'ללא שם שמור');
+                        const hasName = member.isMe || (member.name && member.name.length > 0 && member.name !== member.number && !member.name.includes('@'));
 
                         div.innerHTML = `
                             <div style="display: flex; flex-direction: column; overflow: hidden; flex-grow: 1;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="member-name" style="font-weight: 700; font-size: 1.05rem; color: ${hasName ? 'var(--primary)' : 'var(--text)'}">${displayName}</span>
+                                    <span class="member-name" style="font-weight: 700; font-size: 1.05rem; color: ${member.isMe ? '#10b981' : (hasName ? 'var(--primary)' : 'var(--text)')}">${displayName}</span>
                                     ${member.isAdmin ? '<span class="member-admin">מנהל</span>' : ''}
                                 </div>
                                 <span style="font-size: 0.8rem; color: var(--text-muted); direction: ltr; text-align: right; margin-top: 2px; font-family: monospace;">${subText}</span>
                             </div>
                             <div class="member-actions" style="align-items: center; gap: 12px;">
-                                ${member.isAdmin ?
-                                `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'demote', '${groupName.replace(/'/g, "\\'")}')" title="הסר מניהול">
-                                        <i data-lucide="shield-off" style="width:14px;"></i> הסר ניהול
-                                    </button>` :
-                                `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'promote', '${groupName.replace(/'/g, "\\'")}')" title="הפוך למנהל">
-                                        <i data-lucide="shield-check" style="width:14px;"></i> מנהל
-                                    </button>`
-                            }
-                                <div class="btn-remove-large" onclick="memberAction('${groupId}', '${member.id}', 'remove', '${groupName.replace(/'/g, "\\'")}')" title="הסר מהקבוצה">
-                                    <i data-lucide="x" style="width:20px; height:20px; stroke-width: 3;"></i>
-                                </div>
+                                ${!member.isMe ? `
+                                    ${member.isAdmin ?
+                                    `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'demote', '${groupName.replace(/'/g, "\\'")}')" title="הסר מניהול">
+                                            <i data-lucide="shield-off" style="width:14px;"></i> הסר ניהול
+                                        </button>` :
+                                    `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'promote', '${groupName.replace(/'/g, "\\'")}')" title="הפוך למנהל">
+                                            <i data-lucide="shield-check" style="width:14px;"></i> מנהל
+                                        </button>`
+                                }
+                                    <div class="btn-remove-large" onclick="memberAction('${groupId}', '${member.id}', 'remove', '${groupName.replace(/'/g, "\\'")}')" title="הסר מהקבוצה">
+                                        <i data-lucide="x" style="width:20px; height:20px; stroke-width: 3;"></i>
+                                    </div>
+                                ` : '<span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">חשבון פעיל</span>'}
                             </div>
                         `;
                         list.appendChild(div);

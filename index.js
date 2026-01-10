@@ -679,15 +679,15 @@ app.get('/api/group/members', async (req, res) => {
         const chat = await session.client.getChatById(groupId);
         if (!chat.isGroup) return res.status(400).json({ error: 'Not a group' });
 
+        const botId = session.client.info.wid._serialized;
         const members = [];
-        // Process members - we'll try to force a fetch for names that are missing
         for (const p of chat.participants) {
             try {
-                // Use the new resolution logic
-                let name = await resolveBestName(session.client, p.id);
+                const isMe = p.id._serialized === botId;
+                let name = isMe ? "אני (הבוט)" : await resolveBestName(session.client, p.id);
 
                 // If still no name, try the "poke" method
-                if (!name) {
+                if (!name && !isMe) {
                     try {
                         const contact = await session.client.getContactById(p.id._serialized);
                         await Promise.race([
@@ -704,14 +704,16 @@ app.get('/api/group/members', async (req, res) => {
                     name: name || "",
                     number: p.id.user,
                     isAdmin: p.isAdmin,
-                    isSuperAdmin: p.isSuperAdmin
+                    isSuperAdmin: p.isSuperAdmin,
+                    isMe: isMe
                 });
             } catch (e) {
                 members.push({
                     id: p.id._serialized,
                     name: contactsCache[p.id.user] || "",
                     number: p.id.user,
-                    isAdmin: p.isAdmin
+                    isAdmin: p.isAdmin,
+                    isMe: p.id._serialized === botId
                 });
             }
         }
