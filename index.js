@@ -637,6 +637,9 @@ app.get('/api/groups', async (req, res) => {
                 isLocked: chat.announce // true if only admins can send messages
             }));
 
+        if (groups.length > 0) {
+            console.log(`[API] Sample group: ${groups[0].name}, Locked: ${groups[0].isLocked}`);
+        }
         console.log(`[API] Found ${groups.length} managed groups`);
         res.json({ success: true, groups });
     } catch (err) {
