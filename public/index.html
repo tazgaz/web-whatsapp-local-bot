@@ -1838,8 +1838,13 @@ curl -X POST http://localhost:3000/api/send-message \
         function switchTab(tab) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
             document.getElementById(tab + '-section').classList.add('active');
+
+            // Close the members modal if it's open
+            closeMembersModal();
 
             if (tab === 'dashboard') {
                 updateDashboardCharts();
@@ -2134,6 +2139,14 @@ curl -X POST http://localhost:3000/api/send-message \
         });
 
         lucide.createIcons();
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            const modal = document.getElementById('members-modal');
+            if (event.target == modal) {
+                closeMembersModal();
+            }
+        }
     </script>
 </body>
 
