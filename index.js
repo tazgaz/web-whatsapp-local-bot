@@ -529,6 +529,80 @@ app.post('/api/send-message', async (req, res) => {
     }
 });
 
+app.post('/api/group/lock', async (req, res) => {
+    const { groupId, sessionId } = req.body;
+    const sid = sessionId || 'default';
+
+    if (!groupId) {
+        return res.status(400).json({ error: 'Missing groupId in request body' });
+    }
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
+    }
+
+    try {
+        const chatId = groupId.includes('@') ? groupId : `${groupId}@g.us`;
+        const chat = await session.client.getChatById(chatId);
+
+        if (!chat.isGroup) {
+            return res.status(400).json({ error: 'The provided ID is not a group' });
+        }
+
+        // Set group settings to only admins can send messages
+        await chat.setMessagesAdminsOnly(true);
+
+        logToUI(sid, `🔒 הקבוצה "${chat.name}" ננעלה - רק מנהלים יכולים לשלוח הודעות`);
+        res.json({
+            success: true,
+            message: 'Group locked successfully',
+            groupName: chat.name,
+            groupId: chatId
+        });
+    } catch (err) {
+        logToUI(sid, `✗ שגיאה בנעילת קבוצה: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/group/unlock', async (req, res) => {
+    const { groupId, sessionId } = req.body;
+    const sid = sessionId || 'default';
+
+    if (!groupId) {
+        return res.status(400).json({ error: 'Missing groupId in request body' });
+    }
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
+    }
+
+    try {
+        const chatId = groupId.includes('@') ? groupId : `${groupId}@g.us`;
+        const chat = await session.client.getChatById(chatId);
+
+        if (!chat.isGroup) {
+            return res.status(400).json({ error: 'The provided ID is not a group' });
+        }
+
+        // Set group settings to allow all members to send messages
+        await chat.setMessagesAdminsOnly(false);
+
+        logToUI(sid, `🔓 הקבוצה "${chat.name}" נפתחה - כל החברים יכולים לשלוח הודעות`);
+        res.json({
+            success: true,
+            message: 'Group unlocked successfully',
+            groupName: chat.name,
+            groupId: chatId
+        });
+    } catch (err) {
+        logToUI(sid, `✗ שגיאה בפתיחת קבוצה: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/logout', async (req, res) => {
     const { sessionId } = req.body;
     const sid = sessionId || 'default';

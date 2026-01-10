@@ -10,3 +10,18 @@ yarn-error.log*
 .DS_Store
 dist/
 build/
+
+# Data directories
+n8n_data/
+redis_data/
+data/
+logs/
+
+# Databases
+*.sqlite
+*.sqlite-journal
+
+# Sessions
+sessions.json
+user_states.json
+stats.json
