@@ -1588,10 +1588,26 @@ curl -X POST http://localhost:3000/api/send-message \
             const renameBtn = document.getElementById('btn-rename-group');
             renameBtn.onclick = () => renameGroup(groupId, groupName);
 
-            list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div></div>';
+            list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div><p style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">טוען נתונים...</p></div>';
             modal.style.display = 'flex';
 
             try {
+                // 1. Ensure we have contacts for cross-referencing (Crucial for name resolution)
+                if (!currentContacts || currentContacts.length === 0) {
+                    list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div><p style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">טוען מעגל אנשי קשר...</p></div>';
+                    try {
+                        const cRes = await fetch(`/api/contacts?sessionId=${selectedSessionId}`);
+                        const cData = await cRes.json();
+                        if (cData.success) {
+                            currentContacts = cData.contacts;
+                            console.log('Contacts auto-loaded for group viewing:', currentContacts.length);
+                        }
+                    } catch (e) {
+                        console.error("Failed to auto-load contacts", e);
+                    }
+                }
+
+                // 2. Fetch Group Members
                 const res = await fetch(`/api/group/members?sessionId=${selectedSessionId}&groupId=${groupId}`);
                 const data = await res.json();
 
@@ -1601,10 +1617,23 @@ curl -X POST http://localhost:3000/api/send-message \
                         const div = document.createElement('div');
                         div.className = 'member-item';
 
+                        // Cross-reference with global contacts list if available
+                        let matchedContactName = null;
+                        if (currentContacts.length > 0) {
+                            const match = currentContacts.find(c => c.number === member.number || (c.id && (c.id === member.id || c.id._serialized === member.id)));
+                            if (match && match.name) {
+                                matchedContactName = match.name;
+                            }
+                        }
+
                         // Special handling for the bot itself
-                        let displayName = member.isMe ? "אני (הבוט)" : (member.name || member.number);
-                        let subText = member.isMe ? member.number : (member.name && member.name !== member.number ? member.number : 'ללא שם שמור');
-                        const hasName = member.isMe || (member.name && member.name.length > 0 && member.name !== member.number && !member.name.includes('@'));
+                        let finalName = member.isMe ? "אני (הבוט)" : (matchedContactName || member.name || member.number);
+                        // If the name is just the number, and we found a matched name, prefer the matched name
+                        if (finalName === member.number && matchedContactName) finalName = matchedContactName;
+
+                        let displayName = finalName;
+                        let subText = member.isMe ? member.number : (displayName !== member.number ? member.number : 'ללא שם שמור');
+                        const hasName = member.isMe || (displayName && displayName !== member.number);
 
                         div.innerHTML = `
                             <div style="display: flex; flex-direction: column; overflow: hidden; flex-grow: 1;">
