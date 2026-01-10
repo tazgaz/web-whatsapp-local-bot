@@ -14,6 +14,16 @@ const server = http.createServer(app);
 const io = new Server(server);
 const port = 3000;
 
+io.on('connection', (socket) => {
+    console.log('[Socket] New client connected');
+    const sessionData = Object.keys(activeSessions).map(id => ({
+        id,
+        status: activeSessions[id].status,
+        qr: activeSessions[id].qr
+    }));
+    socket.emit('init_sessions', sessionData);
+});
+
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -565,6 +575,71 @@ app.get('/api/session-health/:sessionId', async (req, res) => {
     });
 });
 
+// Health check for Docker
+app.get('/api/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
+app.get('/api/contacts', async (req, res) => {
+    const { sessionId } = req.query;
+    const sid = sessionId || 'default';
+
+    logToUI(sid, `📂 בקשה למשיכת אנשי קשר עבור ${sid}...`);
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
+    }
+
+    try {
+        console.log(`[API] Fetching contacts/chats for session: ${sid}`);
+        let contacts = [];
+        let source = 'contacts';
+
+        try {
+            // Try getContacts first
+            contacts = await session.client.getContacts();
+            console.log(`[API] Got ${contacts.length} from getContacts for ${sid}`);
+        } catch (e) {
+            console.warn(`[API] getContacts failed for ${sid}, falling back to getChats: ${e.message}`);
+            source = 'chats';
+            // Fallback to getChats
+            const chats = await session.client.getChats();
+            console.log(`[API] Got ${chats.length} chats for fallback for ${sid}`);
+            contacts = chats.map(chat => chat.contact || {
+                id: chat.id,
+                name: chat.name,
+                isGroup: chat.isGroup
+            });
+        }
+
+        const simplifiedContacts = [];
+        const seenIds = new Set();
+
+        for (const c of contacts) {
+            if (!c || !c.id) continue;
+            const serializedId = c.id._serialized || c.id;
+            if (seenIds.has(serializedId)) continue;
+            seenIds.add(serializedId);
+
+            simplifiedContacts.push({
+                id: serializedId,
+                number: c.number || (c.id.user ? c.id.user : ''),
+                name: c.name || c.pushname || c.shortName || "",
+                isGroup: !!c.isGroup,
+                isMyContact: !!c.isMyContact,
+                isWAContact: !!c.isWAContact
+            });
+        }
+
+        res.json({ success: true, contacts: simplifiedContacts, source });
+    } catch (err) {
+        console.error(`[API] Critical error fetching contacts for ${sid}:`, err);
+        logToUI(sid, `✗ שגיאה במשיכת אנשי קשר: ${err.message}`);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.post('/api/send-message', async (req, res) => {
     const { to, message, sessionId } = req.body;
     const sid = sessionId || 'default';
@@ -805,10 +880,10 @@ app.post('/api/group/leave', async (req, res) => {
         if (!chat.isGroup) return res.status(400).json({ error: 'Not a group' });
 
         await chat.leave();
-        logToUI(sid, `🚪 יצאת מהקבוצה "${chat.name}"`);
-        res.json({ success: true, message: 'Left group successfully' });
+        logToUI(sid, `🚪 עזבתי את הקבוצה "${chat.name}" (${groupId})`);
+        res.json({ success: true, message: 'עזבתי את הקבוצה בהצלחה' });
     } catch (err) {
-        logToUI(sid, `✗ שגיאה ביציאה מהקבוצה: ${err.message}`);
+        logToUI(sid, `✗ שגיאה בעזיבת קבוצה: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
 });
@@ -817,99 +892,36 @@ app.get('/api/groups', async (req, res) => {
     const { sessionId } = req.query;
     const sid = sessionId || 'default';
 
-    console.log(`[API] Fetching groups for session: ${sid}`);
-
     const session = activeSessions[sid];
     if (!session || session.status !== 'READY') {
-        console.log(`[API] Session ${sid} is NOT ready (status: ${session ? session.status : 'N/A'})`);
         return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
     }
 
     try {
-        console.log(`[API] Calling getChats() for ${sid}...`);
         const chats = await session.client.getChats();
-        console.log(`[API] Got ${chats.length} chats`);
+        const botId = session.client.info.wid._serialized;
 
-        const me = session.client.info.wid._serialized;
-        console.log(`[API] My ID: ${me}`);
-
-        const groups = chats
+        const managedGroups = chats
             .filter(chat => chat.isGroup)
-            .filter(chat => {
-                // Check if user is an admin
-                const amIAdmin = chat.participants && chat.participants.some(p => p.id._serialized === me && p.isAdmin);
-                return amIAdmin;
+            .map(chat => {
+                const participant = chat.participants.find(p => p.id._serialized === botId);
+                return {
+                    id: chat.id._serialized,
+                    name: chat.name,
+                    isAdmin: participant ? participant.isAdmin : false,
+                    isAnnouncementsOnly: chat.isReadOnly,
+                    participantsCount: chat.participants ? chat.participants.length : 0
+                };
             })
-            .map(chat => ({
-                id: chat.id._serialized,
-                name: chat.name,
-                participantsCount: (chat.participants || []).length,
-                isLocked: chat.announce // true if only admins can send messages
-            }));
+            .filter(group => group.isAdmin);
 
-        if (groups.length > 0) {
-            console.log(`[API] Sample group: ${groups[0].name}, Locked: ${groups[0].isLocked}`);
-        }
-        console.log(`[API] Found ${groups.length} managed groups`);
-        res.json({ success: true, groups });
+        res.json({ success: true, groups: managedGroups });
     } catch (err) {
-        console.error(`[API] Error in /api/groups for ${sid}:`, err);
-        logToUI(sid, `✗ שגיאה בקבלת רשימת קבוצות: ${err.message}`);
+        logToUI(sid, `✗ שגיאה במשיכת קבוצות: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
-});
-
-app.post('/api/logout', async (req, res) => {
-    const { sessionId } = req.body;
-    const sid = sessionId || 'default';
-    try {
-        logToUI(sid, '🔄 מתנתק מהמערכת...');
-        if (activeSessions[sid]) {
-            await activeSessions[sid].client.logout();
-            logToUI(sid, '✅ התנתקת בהצלחה.');
-        }
-        res.json({ success: true });
-    } catch (err) {
-        logToUI(sid, `✗ שגיאה בהתנתקות: ${err.message}`);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        message: 'WhatsApp Bot is running',
-        timestamp: new Date().toISOString(),
-        sessions: Object.keys(activeSessions).length
-    });
-});
-
-app.post('/api/restart', (req, res) => {
-    logToUI('system', '🔄 בקשת ריסטרט התקבלה מה-API. מאתחל את הבוט...');
-    res.json({ success: true, message: 'Restarting bot...' });
-    setTimeout(() => {
-        process.exit(1);
-    }, 1500);
-});
-
-io.on('connection', (socket) => {
-    // Send current status of all sessions
-    const sessionData = Object.keys(activeSessions).map(id => ({
-        id,
-        status: activeSessions[id].status,
-        qr: activeSessions[id].qr
-    }));
-    socket.emit('init_sessions', sessionData);
-
-    try {
-        const stats = getStats();
-        socket.emit('stats_update', stats);
-    } catch (e) { }
-
-    socket.emit('log', { sessionId: 'system', message: '--- מחובר לשרת הניהול ---' });
 });
 
 server.listen(port, () => {
-    console.log(`UI running at http://localhost:${port}`);
+    console.log(`Server running at http://localhost:${port}`);
 });
-

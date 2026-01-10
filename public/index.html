@@ -878,6 +878,9 @@
                 <div class="nav-tab" onclick="switchTab('send-message')">
                     <i data-lucide="settings-2" style="width: 18px; margin-left: 8px;"></i>פעולות בחשבון
                 </div>
+                <div class="nav-tab" onclick="switchTab('contacts')">
+                    <i data-lucide="users" style="width: 18px; margin-left: 8px;"></i>אנשי קשר
+                </div>
             </div>
 
             <!-- Automation Tab -->
@@ -1149,6 +1152,55 @@ curl -X POST http://localhost:3000/api/send-message \
   }'</pre>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contacts Tab -->
+            <div id="contacts-section" class="section">
+                <div class="card">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 class="rajdhani"
+                            style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="users" style="width: 20px;"></i> רשימת אנשי קשר
+                        </h2>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <button onclick="exportContactsCSV()" class="btn-primary"
+                                style="padding: 8px 16px; font-size: 0.85rem;">
+                                <i data-lucide="download" style="width: 16px; margin-left: 6px;"></i> ייצא ל-CSV
+                            </button>
+                            <button onclick="loadContacts()" class="btn-quick-filter">
+                                <i data-lucide="refresh-cw" style="width: 14px; margin-left: 6px;"></i> רענן רשימה
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="contact-search" placeholder="חיפוש לפי שם או מספר..."
+                            oninput="filterContacts()">
+                    </div>
+
+                    <div
+                        style="background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: rgba(6, 182, 212, 0.1); color: var(--primary);">
+                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">שם</th>
+                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">מספר</th>
+                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">סוג</th>
+                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contacts-table-body">
+                                <tr>
+                                    <td colspan="4"
+                                        style="padding: 30px; text-align: center; color: var(--text-muted);">
+                                        לחץ על "רענן רשימה" כדי לטעון אנשי קשר
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1882,12 +1934,110 @@ curl -X POST http://localhost:3000/api/send-message \
             triggersChart.update();
         }
 
+        let currentContacts = [];
+
+        async function loadContacts() {
+            if (!selectedSessionId) return;
+
+            const tbody = document.getElementById('contacts-table-body');
+            tbody.innerHTML = '<tr><td colspan="4" style="padding: 30px; text-align: center;"><div class="loader" style="margin: 0 auto; width: 24px; height: 24px;"></div> <p style="margin-top: 10px;">טוען אנשי קשר (זה עשוי לקחת רגע אם יש הרבה)...</p></td></tr>';
+
+            try {
+                const res = await fetch(`/api/contacts?sessionId=${selectedSessionId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    currentContacts = data.contacts;
+                    renderContacts(currentContacts);
+                    if (data.source === 'chats') {
+                        console.warn('Contacts loaded from chats fallback');
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--danger);">שגיאה: ${data.error || 'שגיאה לא ידועה'}</td></tr>`;
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--danger);">שגיאה בחיבור לשרת: ${err.message}</td></tr>`;
+            }
+        }
+
+        function renderContacts(contacts) {
+            const tbody = document.getElementById('contacts-table-body');
+            if (!tbody) return;
+
+            if (contacts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--text-muted);">לא נמצאו אנשי קשר</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = contacts.map(c => `
+                <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px; font-weight: 600;">${c.name || '<span style="color: var(--text-muted);">ללא שם</span>'}</td>
+                    <td style="padding: 12px; direction: ltr; color: var(--primary); font-family: 'Rajdhani'; font-weight: 600;">${c.number}</td>
+                    <td style="padding: 12px;">
+                        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: ${c.isGroup ? 'rgba(6, 182, 212, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${c.isGroup ? 'var(--primary)' : '#4ade80'}; border: 1px solid ${c.isGroup ? 'rgba(6, 182, 212, 0.2)' : 'rgba(34, 197, 94, 0.2)'};">
+                            ${c.isGroup ? 'קבוצה' : 'פרטי'}
+                        </span>
+                    </td>
+                    <td style="padding: 12px;">
+                        <button onclick="quickMessage('${c.number}')" class="btn-action" title="שלח הודעה מהירה">
+                            <i data-lucide="message-circle" style="width: 14px;"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function filterContacts() {
+            const query = document.getElementById('contact-search').value.toLowerCase();
+            const filtered = currentContacts.filter(c =>
+                (c.name && c.name.toLowerCase().includes(query)) ||
+                (c.number && c.number.includes(query))
+            );
+            renderContacts(filtered);
+        }
+
+        function quickMessage(number) {
+            switchTab('send-message');
+            document.getElementById('manual-msg-to').value = number;
+        }
+
+        function exportContactsCSV() {
+            if (currentContacts.length === 0) {
+                alert('אנא טען את רשימת אנשי הקשר תחילה');
+                return;
+            }
+
+            const headers = ['Name', 'Number', 'Type'];
+            const rows = currentContacts.map(c => [
+                c.name || '',
+                c.number,
+                c.isGroup ? 'Group' : 'Contact'
+            ]);
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(r => r.map(val => `"${val.replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `whatsapp_contacts_${selectedSessionId}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function switchTab(tab) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            }
+
+            const activeTab = document.querySelector(`[onclick="switchTab('${tab}')"]`);
+            if (activeTab) activeTab.classList.add('active');
+
             document.getElementById(tab + '-section').classList.add('active');
 
             // Close the members modal if it's open
@@ -1896,6 +2046,13 @@ curl -X POST http://localhost:3000/api/send-message \
             if (tab === 'dashboard') {
                 updateDashboardCharts();
             }
+            if (tab === 'logs') {
+                loadLogs(selectedSessionId);
+            }
+            if (tab === 'contacts' && currentContacts.length === 0) {
+                loadContacts();
+            }
+            lucide.createIcons();
         }
 
         function clearLogs() { logsEl.innerHTML = ''; }

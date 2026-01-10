@@ -22,8 +22,8 @@ services:
       - NODE_ENV=production
     restart: always
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health" ]
-      interval: 2m
+      test: [ "CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3000/api/health\", (res) => { if (res.statusCode === 200) process.exit(0); else process.exit(1); }).on(\"error\", (err) => process.exit(1))'" ]
+      interval: 1m
       timeout: 10s
       retries: 3
       start_period: 40s
