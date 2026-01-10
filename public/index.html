@@ -1577,6 +1577,63 @@ curl -X POST http://localhost:3000/api/send-message \
             }
         }
 
+
+        function renderGroupMembersList(members, groupId, groupName) {
+            const list = document.getElementById('members-list');
+            if (!list) return;
+
+            list.innerHTML = '';
+            members.forEach(member => {
+                const div = document.createElement('div');
+                div.className = 'member-item';
+
+                // Cross-reference with global contacts list if available
+                let matchedContactName = null;
+                if (currentContacts.length > 0) {
+                    const match = currentContacts.find(c => c.number === member.number || (c.id && (c.id === member.id || c.id._serialized === member.id)));
+                    if (match && match.name) {
+                        matchedContactName = match.name;
+                    }
+                }
+
+                // Special handling for the bot itself
+                let finalName = member.isMe ? "אני (הבוט)" : (matchedContactName || member.name || member.number);
+                // If the name is just the number, and we found a matched name, prefer the matched name
+                if (finalName === member.number && matchedContactName) finalName = matchedContactName;
+
+                let displayName = finalName;
+                let subText = member.isMe ? member.number : (displayName !== member.number ? member.number : 'ללא שם שמור');
+                const hasName = member.isMe || (displayName && displayName !== member.number);
+
+                div.innerHTML = `
+                     <div style="display: flex; flex-direction: column; overflow: hidden; flex-grow: 1;">
+                         <div style="display: flex; align-items: center; gap: 8px;">
+                             <span class="member-name" style="font-weight: 700; font-size: 1.05rem; color: ${member.isMe ? '#10b981' : (hasName ? 'var(--primary)' : 'var(--text)')}">${displayName}</span>
+                             ${member.isAdmin ? '<span class="member-admin">מנהל</span>' : ''}
+                         </div>
+                         <span style="font-size: 0.8rem; color: var(--text-muted); direction: ltr; text-align: right; margin-top: 2px; font-family: monospace;">${subText}</span>
+                     </div>
+                     <div class="member-actions" style="align-items: center; gap: 12px;">
+                         ${!member.isMe ? `
+                             ${member.isAdmin ?
+                            `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'demote', '${groupName.replace(/'/g, "\\'")}')" title="הסר מניהול">
+                                     <i data-lucide="shield-off" style="width:14px;"></i> הסר ניהול
+                                 </button>` :
+                            `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'promote', '${groupName.replace(/'/g, "\\'")}')" title="הפוך למנהל">
+                                     <i data-lucide="shield-check" style="width:14px;"></i> מנהל
+                                 </button>`
+                        }
+                             <div class="btn-remove-large" onclick="memberAction('${groupId}', '${member.id}', 'remove', '${groupName.replace(/'/g, "\\'")}')" title="הסר מהקבוצה">
+                                 <i data-lucide="x" style="width:20px; height:20px; stroke-width: 3;"></i>
+                             </div>
+                         ` : '<span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">חשבון פעיל</span>'}
+                     </div>
+                 `;
+                list.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
         async function showGroupMembers(groupId, groupName) {
             const modal = document.getElementById('members-modal');
             const list = document.getElementById('members-list');
@@ -1591,84 +1648,41 @@ curl -X POST http://localhost:3000/api/send-message \
             list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div><p style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">טוען נתונים...</p></div>';
             modal.style.display = 'flex';
 
-            try {
-                // 1. Ensure we have contacts for cross-referencing (Crucial for name resolution)
-                if (!currentContacts || currentContacts.length === 0) {
-                    list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div><p style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">טוען מעגל אנשי קשר...</p></div>';
-                    try {
-                        const cRes = await fetch(`/api/contacts?sessionId=${selectedSessionId}`);
-                        const cData = await cRes.json();
-                        if (cData.success) {
-                            currentContacts = cData.contacts;
-                            console.log('Contacts auto-loaded for group viewing:', currentContacts.length);
-                        }
-                    } catch (e) {
-                        console.error("Failed to auto-load contacts", e);
-                    }
-                }
+            // Allow storing current members to refresh view later
+            modal.dataset.currentGroupId = groupId;
+            modal.dataset.currentGroupName = groupName;
 
-                // 2. Fetch Group Members
+            try {
+                // Background refresh of contacts to ensure names are up-to-date
+                const contactsPromise = fetch(`/api/contacts?sessionId=${selectedSessionId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            currentContacts = data.contacts;
+                            console.log('Contacts refreshed in background:', currentContacts.length);
+                            // If modal is still open for this group, refresh the view
+                            if (modal.style.display === 'flex' && modal.dataset.currentGroupId === groupId && window.lastGroupMembers) {
+                                renderGroupMembersList(window.lastGroupMembers, groupId, groupName);
+                            }
+                        }
+                    })
+                    .catch(console.error);
+
+                // Fetch Group Members
                 const res = await fetch(`/api/group/members?sessionId=${selectedSessionId}&groupId=${groupId}`);
                 const data = await res.json();
 
                 if (res.ok && data.members) {
-                    list.innerHTML = '';
-                    data.members.forEach(member => {
-                        const div = document.createElement('div');
-                        div.className = 'member-item';
-
-                        // Cross-reference with global contacts list if available
-                        let matchedContactName = null;
-                        if (currentContacts.length > 0) {
-                            const match = currentContacts.find(c => c.number === member.number || (c.id && (c.id === member.id || c.id._serialized === member.id)));
-                            if (match && match.name) {
-                                matchedContactName = match.name;
-                            }
-                        }
-
-                        // Special handling for the bot itself
-                        let finalName = member.isMe ? "אני (הבוט)" : (matchedContactName || member.name || member.number);
-                        // If the name is just the number, and we found a matched name, prefer the matched name
-                        if (finalName === member.number && matchedContactName) finalName = matchedContactName;
-
-                        let displayName = finalName;
-                        let subText = member.isMe ? member.number : (displayName !== member.number ? member.number : 'ללא שם שמור');
-                        const hasName = member.isMe || (displayName && displayName !== member.number);
-
-                        div.innerHTML = `
-                            <div style="display: flex; flex-direction: column; overflow: hidden; flex-grow: 1;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="member-name" style="font-weight: 700; font-size: 1.05rem; color: ${member.isMe ? '#10b981' : (hasName ? 'var(--primary)' : 'var(--text)')}">${displayName}</span>
-                                    ${member.isAdmin ? '<span class="member-admin">מנהל</span>' : ''}
-                                </div>
-                                <span style="font-size: 0.8rem; color: var(--text-muted); direction: ltr; text-align: right; margin-top: 2px; font-family: monospace;">${subText}</span>
-                            </div>
-                            <div class="member-actions" style="align-items: center; gap: 12px;">
-                                ${!member.isMe ? `
-                                    ${member.isAdmin ?
-                                    `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'demote', '${groupName.replace(/'/g, "\\'")}')" title="הסר מניהול">
-                                            <i data-lucide="shield-off" style="width:14px;"></i> הסר ניהול
-                                        </button>` :
-                                    `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'promote', '${groupName.replace(/'/g, "\\'")}')" title="הפוך למנהל">
-                                            <i data-lucide="shield-check" style="width:14px;"></i> מנהל
-                                        </button>`
-                                }
-                                    <div class="btn-remove-large" onclick="memberAction('${groupId}', '${member.id}', 'remove', '${groupName.replace(/'/g, "\\'")}')" title="הסר מהקבוצה">
-                                        <i data-lucide="x" style="width:20px; height:20px; stroke-width: 3;"></i>
-                                    </div>
-                                ` : '<span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">חשבון פעיל</span>'}
-                            </div>
-                        `;
-                        list.appendChild(div);
-                    });
+                    window.lastGroupMembers = data.members; // Store for re-rendering
+                    renderGroupMembersList(data.members, groupId, groupName);
                 } else {
                     list.innerHTML = `<p style="color: var(--danger); text-align: center;">שגיאה: ${data.error || 'לא ניתן לטעון משתתפים'}</p>`;
                 }
             } catch (err) {
                 list.innerHTML = '<p style="color: var(--danger); text-align: center;">שגיאת תקשורת</p>';
             }
-            lucide.createIcons();
         }
+
 
         function closeMembersModal() {
             document.getElementById('members-modal').style.display = 'none';
@@ -2024,11 +2038,13 @@ curl -X POST http://localhost:3000/api/send-message \
 
             tbody.innerHTML = contacts.map(c => `
                 <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 12px; font-weight: 600;">${c.name || '<span style="color: var(--text-muted);">ללא שם</span>'}</td>
+                    <td style="padding: 12px; font-weight: 600; cursor: ${c.isGroup ? 'pointer' : 'default'}; color: ${c.isGroup ? 'var(--primary)' : 'inherit'};" onclick="${c.isGroup ? `showGroupMembers('${c.id}', '${(c.name || 'ללא שם').replace(/'/g, "\\'")}')` : ''}">${c.name || '<span style="color: var(--text-muted);">ללא שם</span>'}</td>
                     <td style="padding: 12px; direction: ltr; color: var(--primary); font-family: 'Rajdhani'; font-weight: 600;">${c.number}</td>
                     <td style="padding: 12px;">
-                        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: ${c.isGroup ? 'rgba(6, 182, 212, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${c.isGroup ? 'var(--primary)' : '#4ade80'}; border: 1px solid ${c.isGroup ? 'rgba(6, 182, 212, 0.2)' : 'rgba(34, 197, 94, 0.2)'};">
-                            ${c.isGroup ? 'קבוצה' : 'פרטי'}
+                        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: ${c.isGroup ? 'rgba(6, 182, 212, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${c.isGroup ? 'var(--primary)' : '#4ade80'}; border: 1px solid ${c.isGroup ? 'rgba(6, 182, 212, 0.2)' : 'rgba(34, 197, 94, 0.2)'}; display: inline-flex; align-items: center; gap: 4px; cursor: ${c.isGroup ? 'pointer' : 'default'}" onclick="${c.isGroup ? `showGroupMembers('${c.id}', '${(c.name || 'ללא שם').replace(/'/g, "\\'")}')` : ''}">
+                            ${c.isGroup ?
+                    `קבוצה <span style="font-size:0.65em; opacity:0.8; margin-right:2px;">(${c.participantCount || '?'})</span>` :
+                    'פרטי'}
                         </span>
                     </td>
                     <td style="padding: 12px;">

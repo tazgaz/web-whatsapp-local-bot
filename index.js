@@ -11,6 +11,7 @@ const { readJSON, writeJSON } = require('./utils');
 
 const app = express();
 const server = http.createServer(app);
+const activeSessions = {}; // { id: { client, status, qr } }
 const io = new Server(server);
 const port = 3000;
 
@@ -88,7 +89,7 @@ async function resolveBestName(client, id) {
     return "";
 }
 
-const activeSessions = {}; // { id: { client, status, qr } }
+
 
 // Stats management
 const STATS_FILE = './stats.json';
@@ -597,20 +598,48 @@ app.get('/api/contacts', async (req, res) => {
         let source = 'contacts';
 
         try {
-            // Try getContacts first
             contacts = await session.client.getContacts();
             console.log(`[API] Got ${contacts.length} from getContacts for ${sid}`);
+
+            // Fetch chats to get group participant counts
+            try {
+                const chats = await session.client.getChats();
+                chats.forEach(chat => {
+                    if (chat.isGroup && chat.participants) {
+                        // Store count by serialized ID
+                        c.groupMetadata = c.groupMetadata || {}; // We can't attach to 'c' here, 'c' is not defined. We need an external map.
+                    }
+                });
+            } catch (e) { }
         } catch (e) {
             console.warn(`[API] getContacts failed for ${sid}, falling back to getChats: ${e.message}`);
             source = 'chats';
             // Fallback to getChats
             const chats = await session.client.getChats();
             console.log(`[API] Got ${chats.length} chats for fallback for ${sid}`);
-            contacts = chats.map(chat => chat.contact || {
-                id: chat.id,
-                name: chat.name,
-                isGroup: chat.isGroup
+            contacts = chats.map(chat => {
+                const contact = chat.contact || {
+                    id: chat.id,
+                    name: chat.name,
+                    isGroup: chat.isGroup
+                };
+                // Attach metadata directly to the contact object for later use
+                contact._participantCount = chat.participants ? chat.participants.length : 0;
+                return contact;
             });
+        }
+
+        // Auxiliary map for participant counts if we used getContacts
+        let groupCounts = {};
+        if (source === 'contacts') {
+            try {
+                const chats = await session.client.getChats();
+                chats.forEach(chat => {
+                    if (chat.isGroup) {
+                        groupCounts[chat.id._serialized] = chat.participants ? chat.participants.length : 0;
+                    }
+                });
+            } catch (e) { console.warn('Failed to fetch auxiliary chat data', e); }
         }
 
         const simplifiedContacts = [];
@@ -622,11 +651,20 @@ app.get('/api/contacts', async (req, res) => {
             if (seenIds.has(serializedId)) continue;
             seenIds.add(serializedId);
 
+            const isGroup = !!c.isGroup;
+            let participantCount = 0;
+
+            if (isGroup) {
+                // Check if we have it from fallback or auxiliary map
+                participantCount = c._participantCount || groupCounts[serializedId] || 0;
+            }
+
             simplifiedContacts.push({
                 id: serializedId,
                 number: c.number || (c.id.user ? c.id.user : ''),
                 name: c.name || c.pushname || c.shortName || "",
-                isGroup: !!c.isGroup,
+                isGroup: isGroup,
+                participantCount: participantCount,
                 isMyContact: !!c.isMyContact,
                 isWAContact: !!c.isWAContact
             });
