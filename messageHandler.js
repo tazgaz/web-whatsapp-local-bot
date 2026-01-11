@@ -5,6 +5,33 @@ const { readJSON, writeJSON } = require('./utils');
 
 const STATES_FILE = './user_states.json';
 
+async function resolveSenderNumber(message, client) {
+    const jid =
+        message.author ||
+        (message.id && message.id.participant) ||
+        (message._data && message._data.id && message._data.id.participant) ||
+        message.from ||
+        '';
+
+    if (!jid) return '';
+
+    try {
+        const contact = await client.getContactById(jid);
+        if (contact && contact.number) return contact.number;
+        if (contact && contact.id && contact.id.user) return contact.id.user;
+    } catch (e) { }
+
+    const user = jid.split('@')[0];
+    const digits = user.replace(/\D/g, '');
+    return digits.length >= 8 ? digits : '';
+}
+
+function normalizeNumber(num) {
+    let n = (num || '').replace(/\D/g, '');
+    if (n.startsWith('05')) n = '972' + n.substring(1);
+    return n;
+}
+
 // In-memory cache
 let userStates = readJSON(STATES_FILE);
 
@@ -57,7 +84,16 @@ async function handleMessage(message, client, sessionId, logCallback) {
 
         const allowedSources = rule.allowedSources || [];
         if (allowedSources.length > 0) {
-            const isAllowed = allowedSources.some(source => otherParty.includes(source));
+            const senderNumber = await resolveSenderNumber(message, client);
+            if (!senderNumber) continue;
+
+            const normSender = normalizeNumber(senderNumber);
+            const isAllowed = allowedSources.some(source => {
+                const normSource = normalizeNumber(source);
+                if (!normSource) return false;
+                return normSender === normSource || normSender.includes(normSource) || normSource.includes(normSender);
+            });
+
             if (!isAllowed) continue;
         }
 
@@ -154,6 +190,7 @@ async function handleMessage(message, client, sessionId, logCallback) {
                         message: message.body,
                         media: mediaData,
                         from: sender,
+                        senderNumber: await resolveSenderNumber(message, client),
                         originalSender: message.from,
                         isFromMe: message.fromMe,
                         pushname: pushname,

@@ -89,6 +89,20 @@ async function resolveBestName(client, id) {
     return "";
 }
 
+async function resolveSenderNumberForLog(client, msg) {
+    if (msg.fromMe) return 'Me';
+    const jid = msg.author || msg.from || '';
+    if (!jid) return '';
+
+    try {
+        const contact = await client.getContactById(jid);
+        if (contact && contact.number) return contact.number;
+        if (contact && contact.id && contact.id.user) return contact.id.user;
+    } catch (e) { }
+
+    return jid.split('@')[0];
+}
+
 
 
 // Stats management
@@ -242,12 +256,12 @@ function startSession(sessionId) {
     client.on('message_create', async (msg) => {
         try {
             // Safer way to get sender name without calling getContact() which is failing
-            const senderNum = msg.fromMe ? 'Me' : (msg.author || msg.from).split('@')[0];
+            const senderNum = await resolveSenderNumberForLog(client, msg);
             let senderName = msg.fromMe ? 'אני' : (msg._data.notifyName || senderNum);
 
             // Learn name from message metadata
             if (!msg.fromMe && msg._data.notifyName) {
-                const actualSenderNum = (msg.author || msg.from).split('@')[0];
+                const actualSenderNum = senderNum;
                 updateContactCache(actualSenderNum, msg._data.notifyName);
             }
 
