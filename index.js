@@ -95,12 +95,24 @@ async function resolveSenderNumberForLog(client, msg) {
     if (!jid) return '';
 
     try {
+        const contact = await msg.getContact();
+        if (contact && contact.number) return contact.number;
+        if (contact && contact.id && contact.id.user) return contact.id.user;
+    } catch (e) { }
+
+    try {
         const contact = await client.getContactById(jid);
         if (contact && contact.number) return contact.number;
         if (contact && contact.id && contact.id.user) return contact.id.user;
     } catch (e) { }
 
-    return jid.split('@')[0];
+    const rawFallback =
+        (msg._data && msg._data.id && msg._data.id.participant) ||
+        (msg._data && msg._data.participant && msg._data.participant.user) ||
+        (msg._data && msg._data.from && msg._data.from.user) ||
+        jid;
+
+    return String(rawFallback).split('@')[0];
 }
 
 
@@ -185,6 +197,19 @@ function startSession(sessionId) {
 
     logToUI(sessionId, `🚀 מתחיל אתחול דפדפן עבור ${sessionId}...`);
 
+    // Clean stale locks that prevent Chromium from starting
+    try {
+        const sessionPath = path.resolve(__dirname, '.wwebjs_auth', `session-${sessionId}`);
+        if (fs.existsSync(sessionPath)) {
+            const files = fs.readdirSync(sessionPath);
+            for (const file of files) {
+                if (file.includes('Singleton') || file === 'DevToolsActivePort') {
+                    try { fs.unlinkSync(path.join(sessionPath, file)); } catch (e) { }
+                }
+            }
+        }
+    } catch (e) { }
+
     const client = new Client({
         authStrategy: new LocalAuth({ clientId: sessionId }),
         puppeteer: {
@@ -234,6 +259,19 @@ function startSession(sessionId) {
 
     client.on('ready', () => {
         logToUI(sessionId, '✓ וואטסאפ מוכן לפעולה!');
+        // פאטץ' לתיקון שגיאות פנימיות של וואטסאפ (markedUnread)
+        client.pupPage.evaluate(() => {
+            if (window.WWebJS) {
+                const originalSendSeen = window.WWebJS.sendSeen;
+                window.WWebJS.sendSeen = async (chatId) => {
+                    try {
+                        if (originalSendSeen) return await originalSendSeen(chatId);
+                    } catch (e) { }
+                    return true;
+                };
+            }
+        }).catch(() => { });
+
         updateSessionStatus(sessionId, 'READY', '');
         initScheduler(client);
     });
@@ -258,6 +296,7 @@ function startSession(sessionId) {
             // Safer way to get sender name without calling getContact() which is failing
             const senderNum = await resolveSenderNumberForLog(client, msg);
             let senderName = msg.fromMe ? 'אני' : (msg._data.notifyName || senderNum);
+            const senderJid = msg.author || msg.from || '';
 
             // Learn name from message metadata
             if (!msg.fromMe && msg._data.notifyName) {
@@ -281,7 +320,8 @@ function startSession(sessionId) {
                 // If getChat fails, we just don't show group info
             }
 
-            logToUI(sessionId, `📩 הודעה מ-${senderName}${groupInfo}: ${msg.body}`);
+            const jidInfo = senderJid ? ` [jid: ${senderJid}]` : '';
+            logToUI(sessionId, `📩 הודעה מ-${senderName}${groupInfo}${jidInfo}: ${msg.body}`);
 
             if (!msg.fromMe) updateStats(sessionId, 'received');
 

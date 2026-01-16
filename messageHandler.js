@@ -6,12 +6,18 @@ const { readJSON, writeJSON } = require('./utils');
 const STATES_FILE = './user_states.json';
 
 async function resolveSenderNumber(message, client) {
-    const jid =
+    let jid =
         message.author ||
         (message.id && message.id.participant) ||
         (message._data && message._data.id && message._data.id.participant) ||
         message.from ||
         '';
+
+    try {
+        const contact = await message.getContact();
+        if (contact && contact.number) return contact.number;
+        if (contact && contact.id && contact.id.user) return contact.id.user;
+    } catch (e) { }
 
     if (!jid) return '';
 
@@ -21,7 +27,13 @@ async function resolveSenderNumber(message, client) {
         if (contact && contact.id && contact.id.user) return contact.id.user;
     } catch (e) { }
 
-    const user = jid.split('@')[0];
+    const rawFallback =
+        (message._data && message._data.id && message._data.id.participant) ||
+        (message._data && message._data.participant && message._data.participant.user) ||
+        (message._data && message._data.from && message._data.from.user) ||
+        jid;
+
+    const user = String(rawFallback).split('@')[0];
     const digits = user.replace(/\D/g, '');
     return digits.length >= 8 ? digits : '';
 }
