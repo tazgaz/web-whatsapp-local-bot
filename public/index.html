@@ -1417,11 +1417,25 @@ curl -X POST http://localhost:3000/api/send-message \
             }
         }
 
+        function getSelectedSessionStatus() {
+            if (!selectedSessionId || !sessions[selectedSessionId]) return '';
+            return sessions[selectedSessionId].status || '';
+        }
+
+        function isSelectedSessionReady() {
+            return getSelectedSessionStatus() === 'READY';
+        }
+
         async function loadManagedGroups() {
             if (!selectedSessionId) return;
 
             const container = document.getElementById('managed-groups-container');
             if (!container) return;
+
+            if (!isSelectedSessionReady()) {
+                container.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">החשבון עדיין לא מוכן (READY). סרוק QR והמתן לחיבור מלא.</p>';
+                return;
+            }
 
             // Only show loader if we have a session
             container.innerHTML = '<div style="text-align:center; padding: 15px;"><div class="loader" style="width:20px; height:20px; margin: 0 auto; border-width: 2px;"></div></div>';
@@ -1801,6 +1815,11 @@ curl -X POST http://localhost:3000/api/send-message \
                 return;
             }
 
+            if (!isSelectedSessionReady()) {
+                alert('החשבון עדיין לא במצב READY. סרוק QR והמתן לחיבור מלא לפני שליחה.');
+                return;
+            }
+
             const to = document.getElementById('manual-msg-to').value.trim();
             const message = document.getElementById('manual-msg-content').value.trim();
 
@@ -1848,10 +1867,14 @@ curl -X POST http://localhost:3000/api/send-message \
                 qrcodeEl.innerHTML = `<img src="${s.qr}">`;
                 qrMsg.innerText = 'סרוק קוד QR לחיבור:';
                 loader.style.display = 'none';
-            } else if (s.status === 'READY' || s.status === 'AUTHENTICATED') {
+            } else if (s.status === 'READY') {
                 qrcodeEl.innerHTML = '<div style="color: var(--primary); filter: drop-shadow(0 0 10px var(--primary-glow));"><i data-lucide="smartphone" style="width: 80px; height: 80px;"></i></div>';
                 qrMsg.innerText = '✓ מחובר ופעיל';
                 loader.style.display = 'none';
+            } else if (s.status === 'AUTHENTICATED') {
+                qrcodeEl.innerHTML = '';
+                qrMsg.innerText = 'מחובר לחשבון, ממתין למצב READY...';
+                loader.style.display = 'block';
             } else if (s.status.includes('LOADING')) {
                 qrcodeEl.innerHTML = '';
                 qrMsg.innerText = s.status;

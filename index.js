@@ -181,6 +181,43 @@ function logToUI(sessionId, msg) {
     io.emit('log', { sessionId, message: msg });
 }
 
+function isTransientBrowserError(err) {
+    const msg = (err && err.message) ? err.message : String(err || '');
+    return msg.includes('Protocol error') ||
+        msg.includes('Session closed') ||
+        msg.includes('Target closed') ||
+        msg.includes('Execution context was destroyed');
+}
+
+// Keep the API process alive when Chromium/puppeteer throws transient errors.
+process.on('unhandledRejection', (reason) => {
+    if (isTransientBrowserError(reason)) {
+        console.warn('[Process] Ignored transient browser rejection:', reason?.message || reason);
+        return;
+    }
+    console.error('[Process] Unhandled rejection:', reason);
+});
+
+if (typeof process.setUncaughtExceptionCaptureCallback === 'function') {
+    process.setUncaughtExceptionCaptureCallback((err) => {
+        if (isTransientBrowserError(err)) {
+            console.warn('[Process] Ignored transient browser exception:', err?.message || err);
+            return;
+        }
+        console.error('[Process] Fatal uncaught exception:', err);
+        process.exit(1);
+    });
+} else {
+    process.on('uncaughtException', (err) => {
+        if (isTransientBrowserError(err)) {
+            console.warn('[Process] Ignored transient browser exception:', err?.message || err);
+            return;
+        }
+        console.error('[Process] Fatal uncaught exception:', err);
+        process.exit(1);
+    });
+}
+
 function updateSessionStatus(sessionId, status, qr = null) {
     if (activeSessions[sessionId]) {
         activeSessions[sessionId].status = status;
