@@ -978,6 +978,56 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px;">
+                        <h2 class="rajdhani"
+                            style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="bell-ring" style="width: 20px;"></i> סטטיסטיקת התרעות ירי טילים
+                        </h2>
+                        <button onclick="loadMissileAlertStats()" class="btn-quick-filter">
+                            <i data-lucide="refresh-cw" style="width: 14px; margin-left: 6px;"></i> רענן
+                        </button>
+                    </div>
+                    <p style="margin: 0 0 14px; color: var(--text-muted); font-size: 0.85rem;">
+                        איחוד אוטומטי: התרעות באותה עיר בתוך חלון של 10 דקות נספרות כאירוע אחד.
+                    </p>
+
+                    <div class="stats-grid" style="margin-bottom: 16px;">
+                        <div class="stat-card" style="padding: 14px;">
+                            <div class="stat-info">
+                                <span class="stat-value" id="missile-total-raw">0</span>
+                                <span class="stat-label">סה"כ התרעות גולמיות</span>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="padding: 14px;">
+                            <div class="stat-info">
+                                <span class="stat-value" id="missile-total-grouped">0</span>
+                                <span class="stat-label">סה"כ אירועים אחרי איחוד</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: rgba(6, 182, 212, 0.12); color: var(--primary);">
+                                    <th style="padding: 12px;">תאריך</th>
+                                    <th style="padding: 12px;">עיר</th>
+                                    <th style="padding: 12px;">אירועים (מאוחד)</th>
+                                    <th style="padding: 12px;">התראות גולמיות</th>
+                                </tr>
+                            </thead>
+                            <tbody id="missile-alerts-table-body">
+                                <tr>
+                                    <td colspan="4" style="padding: 22px; text-align: center; color: var(--text-muted);">
+                                        אין נתוני התרעות להצגה
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- Logs Tab -->
@@ -1406,6 +1456,7 @@ curl -X POST http://localhost:3000/api/send-message \
             loadConfig(); // Load config for this session
             loadLogs(id); // Load logs for this session
             updateDashboardCharts(); // Redraw dashboard for the new session
+            loadMissileAlertStats(); // Refresh missile alert dashboard table
             loadManagedGroups(); // Load managed groups
 
             // Reload contacts if we are currently on the contacts tab
@@ -1992,9 +2043,16 @@ curl -X POST http://localhost:3000/api/send-message \
         }
 
         let lastStatsData = { sessions: {} };
+        let lastMissileAlertStats = { sessionId: null, rows: [], totalRawAlerts: 0, totalGroupedEvents: 0 };
         socket.on('stats_update', (statsData) => {
             lastStatsData = statsData;
             updateDashboardCharts();
+        });
+        socket.on('missile_alerts_update', (payload) => {
+            if (!payload || !payload.stats) return;
+            if (payload.sessionId !== selectedSessionId) return;
+            lastMissileAlertStats = payload.stats;
+            renderMissileAlertStats(lastMissileAlertStats);
         });
 
         function updateDashboardCharts() {
@@ -2037,6 +2095,69 @@ curl -X POST http://localhost:3000/api/send-message \
             triggersChart.data.labels = triggerLabels;
             triggersChart.data.datasets[0].data = triggerLabels.map(l => triggers[l]);
             triggersChart.update();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderMissileAlertStats(stats) {
+            const rawEl = document.getElementById('missile-total-raw');
+            const groupedEl = document.getElementById('missile-total-grouped');
+            const tbody = document.getElementById('missile-alerts-table-body');
+            if (!rawEl || !groupedEl || !tbody) return;
+
+            rawEl.innerText = Number(stats?.totalRawAlerts || 0);
+            groupedEl.innerText = Number(stats?.totalGroupedEvents || 0);
+
+            const rows = Array.isArray(stats?.rows) ? stats.rows : [];
+            if (rows.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="padding: 22px; text-align: center; color: var(--text-muted);">
+                            אין נתוני התרעות להצגה
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(row => `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 12px;">${escapeHtml(row.date)}</td>
+                    <td style="padding: 12px; font-weight: 600;">${escapeHtml(row.city)}</td>
+                    <td style="padding: 12px; color: var(--primary); font-weight: 700;">${Number(row.eventCount || 0)}</td>
+                    <td style="padding: 12px; color: var(--text-muted);">${Number(row.rawAlerts || 0)}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadMissileAlertStats() {
+            if (!selectedSessionId) return;
+
+            try {
+                const res = await fetch(`/api/missile-alert-stats?sessionId=${encodeURIComponent(selectedSessionId)}&windowMinutes=10`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to load missile alert stats');
+                lastMissileAlertStats = data;
+                renderMissileAlertStats(data);
+            } catch (err) {
+                const tbody = document.getElementById('missile-alerts-table-body');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" style="padding: 22px; text-align: center; color: var(--danger);">
+                                שגיאה בטעינת נתוני התרעות: ${escapeHtml(err.message)}
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
         }
 
         let currentContacts = [];
@@ -2271,6 +2392,7 @@ curl -X POST http://localhost:3000/api/send-message \
 
             if (tab === 'dashboard') {
                 updateDashboardCharts();
+                loadMissileAlertStats();
             }
             if (tab === 'logs') {
                 loadLogs(selectedSessionId);

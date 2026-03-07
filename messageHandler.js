@@ -153,7 +153,7 @@ async function handleMessage(message, client, sessionId, logCallback) {
             // Reply
             if (rule.reply) {
                 // If I triggered it (outgoing), reply to the chat (otherParty). If incoming, reply to sender (which is otherParty).
-                await client.sendMessage(otherParty, rule.reply);
+                await client.sendMessage(otherParty, rule.reply, { sendSeen: false });
                 if (logCallback) logCallback(`✅ מענה נשלח בהצלחה: "${rule.reply}" (מצב נוכחי: ${currentState || 'התחלה'})`);
 
                 // Update State for next time
@@ -229,9 +229,9 @@ async function handleMessage(message, client, sessionId, logCallback) {
         if (text.includes(rule.trigger.toLowerCase())) {
             try {
                 const contact = await message.getContact();
-                await client.sendMessage(`${rule.forwardTo}@c.us`, `[${sessionId}] הודעה מ-${contact.number}: ${message.body}`);
+                await client.sendMessage(`${rule.forwardTo}@c.us`, `[${sessionId}] הודעה מ-${contact.number}: ${message.body}`, { sendSeen: false });
             } catch (err) {
-                await client.sendMessage(`${rule.forwardTo}@c.us`, `[${sessionId}] הודעה מ-${sender}: ${message.body}`);
+                await client.sendMessage(`${rule.forwardTo}@c.us`, `[${sessionId}] הודעה מ-${sender}: ${message.body}`, { sendSeen: false });
             }
             return { replied: false };
         }
