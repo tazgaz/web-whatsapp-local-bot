@@ -280,8 +280,39 @@ function getMissileAlertStats(sessionId, windowMinutes = 10) {
     };
 }
 
+function countHebrewChars(text) {
+    if (!text) return 0;
+    const m = text.match(/[\u0590-\u05FF]/g);
+    return m ? m.length : 0;
+}
+
+function maybeFixMojibake(text) {
+    if (typeof text !== 'string' || !text) return text;
+    const suspicious = /[\u0080-\u009F]/.test(text) || text.includes('׳') || text.includes('Ã') || text.includes('Â');
+    let out = text;
+    if (!suspicious) return out;
+    try {
+        const fixed = Buffer.from(out, 'latin1').toString('utf8');
+        if (countHebrewChars(fixed) >= countHebrewChars(out)) {
+            out = fixed;
+        }
+    } catch (e) { }
+
+    // Remove common mojibake artifacts that remain after decoding attempts.
+    out = out
+        .replace(/[\u0080-\u009F\uFFFD]/g, '')
+        .replace(/[©™]/g, '')
+        .replace(/\u05F3/g, '') // Hebrew geresh artifacts repeated between letters
+        .replace(/^[\u0590-\u05FF]\s+(?=[\u0590-\u05FF])/u, '') // drop broken leading char from emoji bytes
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+    return out || text;
+}
+
 function logToUI(sessionId, msg) {
-    const formattedMsg = `[${sessionId}] ${msg}`;
+    const safeMsg = maybeFixMojibake(String(msg));
+    const formattedMsg = `[${sessionId}] ${safeMsg}`;
     console.log(formattedMsg);
 
     // Save to file
@@ -291,12 +322,12 @@ function logToUI(sessionId, msg) {
 
         const logFile = path.join(logsDir, `session-${sessionId}.log`);
         const timestamp = new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' });
-        fs.appendFileSync(logFile, `[${timestamp}] ${msg}\n`);
+        fs.appendFileSync(logFile, `[${timestamp}] ${safeMsg}\n`, 'utf8');
     } catch (err) {
         console.error('Error saving log:', err);
     }
 
-    io.emit('log', { sessionId, message: msg });
+    io.emit('log', { sessionId, message: safeMsg });
 }
 
 function isTransientBrowserError(err) {
