@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="he" dir="rtl">
 
 <head>
@@ -821,7 +821,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h2 style="display: flex; align-items: center; gap: 8px;">
-                <i data-lucide="users" style="width: 18px; color: var(--primary);"></i> ׳—׳©׳‘׳•׳ ׳•׳× ׳₪׳¢׳™׳׳™׳
+                <i data-lucide="users" style="width: 18px; color: var(--primary);"></i> חשבונות פעילים
             </h2>
             <div id="total-sessions" class="session-badge" style="padding: 4px 12px; font-size: 0.9rem;">0</div>
         </div>
@@ -829,7 +829,7 @@
             <!-- Sessions will be injected here -->
         </div>
         <button class="btn-add-session" onclick="promptAddSession()">
-            <i data-lucide="plus" style="width: 20px;"></i> ׳”׳•׳¡׳£ ׳—׳©׳‘׳•׳ ׳—׳“׳©
+            <i data-lucide="plus" style="width: 20px;"></i> הוסף חשבון חדש
         </button>
     </div>
 
@@ -856,30 +856,30 @@
             <div id="active-session-indicator" class="session-badge">
                 <i data-lucide="zap"
                     style="width: 16px; margin-left: 6px; color: var(--primary); filter: drop-shadow(0 0 5px var(--primary-glow));"></i>
-                <span id="header-session-name">׳‘׳—׳¨ ׳—׳©׳‘׳•׳</span>
+                <span id="header-session-name">בחר חשבון</span>
             </div>
 
             <div class="header-actions">
-                <button class="btn-logout" onclick="logoutCurrent()">׳”׳×׳ ׳×׳§</button>
+                <button class="btn-logout" onclick="logoutCurrent()">התנתק</button>
             </div>
         </header>
 
         <div class="container">
             <div class="nav-tabs">
                 <div class="nav-tab active" onclick="switchTab('automation')">
-                    <i data-lucide="cpu" style="width: 18px; margin-left: 8px;"></i>׳׳•׳˜׳•׳׳¦׳™׳”
+                    <i data-lucide="cpu" style="width: 18px; margin-left: 8px;"></i>אוטומציה
                 </div>
                 <div class="nav-tab" onclick="switchTab('dashboard')">
-                    <i data-lucide="layout-dashboard" style="width: 18px; margin-left: 8px;"></i>׳“׳©׳‘׳•׳¨׳“
+                    <i data-lucide="layout-dashboard" style="width: 18px; margin-left: 8px;"></i>דשבורד
                 </div>
                 <div class="nav-tab" onclick="switchTab('logs')">
-                    <i data-lucide="clipboard-list" style="width: 18px; margin-left: 8px;"></i>׳™׳•׳׳ ׳₪׳¢׳™׳׳•׳×
+                    <i data-lucide="clipboard-list" style="width: 18px; margin-left: 8px;"></i>יומן פעילות
                 </div>
                 <div class="nav-tab" onclick="switchTab('send-message')">
-                    <i data-lucide="settings-2" style="width: 18px; margin-left: 8px;"></i>׳₪׳¢׳•׳׳•׳× ׳‘׳—׳©׳‘׳•׳
+                    <i data-lucide="settings-2" style="width: 18px; margin-left: 8px;"></i>פעולות בחשבון
                 </div>
                 <div class="nav-tab" onclick="switchTab('contacts')">
-                    <i data-lucide="users" style="width: 18px; margin-left: 8px;"></i>׳׳ ׳©׳™ ׳§׳©׳¨
+                    <i data-lucide="users" style="width: 18px; margin-left: 8px;"></i>אנשי קשר
                 </div>
             </div>
 
@@ -888,33 +888,33 @@
                 <div class="main-grid">
                     <div class="card">
                         <h2 style="display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="smartphone" style="width: 20px; color: var(--primary);"></i> ׳׳¦׳‘ ׳—׳™׳‘׳•׳¨:
-                            <span id="current-status-text">׳‘׳—׳¨ ׳—׳©׳‘׳•׳</span>
+                            <i data-lucide="smartphone" style="width: 20px; color: var(--primary);"></i> מצב חיבור:
+                            <span id="current-status-text">בחר חשבון</span>
                         </h2>
                         <div id="qrcode-container">
                             <div id="loader" class="loader" style="display: none;"></div>
-                            <p id="qr-msg" style="margin-top: 15px; color: #64748b;">׳‘׳—׳¨ ׳—׳©׳‘׳•׳ ׳׳”׳×׳₪׳¨׳™׳˜ ׳‘׳¦׳“</p>
+                            <p id="qr-msg" style="margin-top: 15px; color: #64748b;">בחר חשבון מהתפריט בצד</p>
                             <div id="qrcode"></div>
                         </div>
                         <div style="margin-top: 20px;">
                             <button onclick="deleteSession(selectedSessionId)"
-                                style="color:var(--danger); background:none; border:none; cursor:pointer; font-size: 0.9rem;">׳׳—׳§
-                                ׳—׳©׳‘׳•׳ ׳–׳” ׳׳¦׳׳™׳×׳•׳×</button>
+                                style="color:var(--danger); background:none; border:none; cursor:pointer; font-size: 0.9rem;">מחק
+                                חשבון זה לצמיתות</button>
                         </div>
                     </div>
 
                     <div class="card">
-                        <h2>נ’¬ ׳—׳•׳§׳™ ׳׳¢׳ ׳” ׳׳•׳˜׳•׳׳˜׳™</h2>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">׳—׳•׳§׳™׳ ׳׳׳• ׳™׳—׳•׳׳• ׳¨׳§
-                            ׳¢׳ ׳”׳—׳©׳‘׳•׳ ׳”׳ ׳‘׳—׳¨ (<span id="config-session-name"
-                                style="font-weight: 700; color: var(--primary); font-family: 'Rajdhani', sans-serif;">׳‘׳—׳¨
-                                ׳—׳©׳‘׳•׳</span>).</p>
+                        <h2>💬 חוקי מענה אוטומטי</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">חוקים אלו יחולו רק
+                            על החשבון הנבחר (<span id="config-session-name"
+                                style="font-weight: 700; color: var(--primary); font-family: 'Rajdhani', sans-serif;">בחר
+                                חשבון</span>).</p>
                         <div id="rules-container"></div>
-                        <button class="btn-add" onclick="addNewRule()" style="margin-bottom: 12px;">+ ׳”׳•׳¡׳£ ׳—׳•׳§
-                            ׳—׳“׳©</button>
+                        <button class="btn-add" onclick="addNewRule()" style="margin-bottom: 12px;">+ הוסף חוק
+                            חדש</button>
                         <button class="btn-primary" id="save-btn" onclick="saveAllConfig()"
                             style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                            ׳©׳׳•׳¨ ׳•׳¢׳“׳›׳ ׳”׳’׳“׳¨׳•׳× <i data-lucide="save" style="width: 18px;"></i>
+                            שמור ועדכן הגדרות <i data-lucide="save" style="width: 18px;"></i>
                         </button>
                     </div>
                 </div>
@@ -928,29 +928,29 @@
                         <div class="stat-icon"><i data-lucide="message-square"></i></div>
                         <div class="stat-info">
                             <span class="stat-value" id="stat-total-received">0</span>
-                            <span class="stat-label">׳¡׳”"׳› ׳”׳•׳“׳¢׳•׳× ׳”׳™׳•׳</span>
+                            <span class="stat-label">סה"כ הודעות היום</span>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon"><i data-lucide="zap"></i></div>
                         <div class="stat-info">
                             <span class="stat-value" id="stat-total-replied">0</span>
-                            <span class="stat-label">׳׳•׳˜׳•׳׳¦׳™׳•׳× ׳©׳”׳•׳₪׳¢׳׳•</span>
+                            <span class="stat-label">אוטומציות שהופעלו</span>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon"><i data-lucide="target"></i></div>
                         <div class="stat-info">
                             <span class="stat-value" id="stat-success-rate">0%</span>
-                            <span class="stat-label">׳׳—׳•׳– ׳׳¢׳ ׳” ׳׳•׳¦׳׳—</span>
+                            <span class="stat-label">אחוז מענה מוצלח</span>
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon"><i data-lucide="activity"></i></div>
                         <div class="stat-info">
-                            <span class="stat-value" id="stat-current-status" style="font-size: 1.1rem;">׳‘׳—׳¨
-                                ׳—׳©׳‘׳•׳</span>
-                            <span class="stat-label">׳¡׳˜׳˜׳•׳¡ ׳—׳©׳‘׳•׳</span>
+                            <span class="stat-value" id="stat-current-status" style="font-size: 1.1rem;">בחר
+                                חשבון</span>
+                            <span class="stat-label">סטטוס חשבון</span>
                         </div>
                     </div>
                 </div>
@@ -959,7 +959,7 @@
                     <div class="card" style="margin-bottom: 0;">
                         <h2 class="rajdhani"
                             style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="bar-chart-3" style="width: 20px;"></i> ׳ ׳₪׳— ׳”׳•׳“׳¢׳•׳× (׳©׳‘׳•׳¢׳™)
+                            <i data-lucide="bar-chart-3" style="width: 20px;"></i> נפח הודעות (שבועי)
                         </h2>
                         <div
                             style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
@@ -970,7 +970,7 @@
                     <div class="card" style="margin-bottom: 0;">
                         <h2 class="rajdhani"
                             style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="pie-chart" style="width: 20px;"></i> ׳—׳•׳§׳™׳ ׳₪׳•׳₪׳•׳׳¨׳™׳™׳
+                            <i data-lucide="pie-chart" style="width: 20px;"></i> חוקים פופולריים
                         </h2>
                         <div
                             style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: flex; justify-content: center;">
@@ -983,27 +983,27 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px;">
                         <h2 class="rajdhani"
                             style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="bell-ring" style="width: 20px;"></i> ׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳× ׳”׳×׳¨׳¢׳•׳× ׳™׳¨׳™ ׳˜׳™׳׳™׳
+                            <i data-lucide="bell-ring" style="width: 20px;"></i> סטטיסטיקת התרעות ירי טילים
                         </h2>
                         <button onclick="loadMissileAlertStats()" class="btn-quick-filter">
-                            <i data-lucide="refresh-cw" style="width: 14px; margin-left: 6px;"></i> ׳¨׳¢׳ ׳
+                            <i data-lucide="refresh-cw" style="width: 14px; margin-left: 6px;"></i> רענן
                         </button>
                     </div>
                     <p style="margin: 0 0 14px; color: var(--text-muted); font-size: 0.85rem;">
-                        ׳׳™׳—׳•׳“ ׳׳•׳˜׳•׳׳˜׳™: ׳”׳×׳¨׳¢׳•׳× ׳‘׳׳•׳×׳” ׳¢׳™׳¨ ׳‘׳×׳•׳ ׳—׳׳•׳ ׳©׳ 10 ׳“׳§׳•׳× ׳ ׳¡׳₪׳¨׳•׳× ׳›׳׳™׳¨׳•׳¢ ׳׳—׳“.
+                        איחוד אוטומטי: התרעות באותה עיר בתוך חלון של 10 דקות נספרות כאירוע אחד.
                     </p>
 
                     <div class="stats-grid" style="margin-bottom: 16px;">
                         <div class="stat-card" style="padding: 14px;">
                             <div class="stat-info">
                                 <span class="stat-value" id="missile-total-raw">0</span>
-                                <span class="stat-label">׳¡׳”"׳› ׳”׳×׳¨׳¢׳•׳× ׳’׳•׳׳׳™׳•׳×</span>
+                                <span class="stat-label">סה"כ התרעות גולמיות</span>
                             </div>
                         </div>
                         <div class="stat-card" style="padding: 14px;">
                             <div class="stat-info">
                                 <span class="stat-value" id="missile-total-grouped">0</span>
-                                <span class="stat-label">׳¡׳”"׳› ׳׳™׳¨׳•׳¢׳™׳ ׳׳—׳¨׳™ ׳׳™׳—׳•׳“</span>
+                                <span class="stat-label">סה"כ אירועים אחרי איחוד</span>
                             </div>
                         </div>
                     </div>
@@ -1012,16 +1012,16 @@
                         <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.9rem;">
                             <thead>
                                 <tr style="background: rgba(6, 182, 212, 0.12); color: var(--primary);">
-                                    <th style="padding: 12px;">׳×׳׳¨׳™׳</th>
-                                    <th style="padding: 12px;">׳¢׳™׳¨</th>
-                                    <th style="padding: 12px;">׳׳™׳¨׳•׳¢׳™׳ (׳׳׳•׳—׳“)</th>
-                                    <th style="padding: 12px;">׳”׳×׳¨׳׳•׳× ׳’׳•׳׳׳™׳•׳×</th>
+                                    <th style="padding: 12px;">תאריך</th>
+                                    <th style="padding: 12px;">עיר</th>
+                                    <th style="padding: 12px;">אירועים (מאוחד)</th>
+                                    <th style="padding: 12px;">התראות גולמיות</th>
                                 </tr>
                             </thead>
                             <tbody id="missile-alerts-table-body">
                                 <tr>
                                     <td colspan="4" style="padding: 22px; text-align: center; color: var(--text-muted);">
-                                        ׳׳™׳ ׳ ׳×׳•׳ ׳™ ׳”׳×׳¨׳¢׳•׳× ׳׳”׳¦׳’׳”
+                                        אין נתוני התרעות להצגה
                                     </td>
                                 </tr>
                             </tbody>
@@ -1037,12 +1037,12 @@
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h2 class="rajdhani"
                             style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="activity" style="width: 20px;"></i> ׳™׳•׳׳ ׳₪׳¢׳™׳׳•׳™׳•׳×
+                            <i data-lucide="activity" style="width: 20px;"></i> יומן פעילויות
                         </h2>
                         <div style="display: flex; gap: 12px; align-items: center;">
                             <button onclick="clearLogs()" class="btn-logout"
-                                style="padding: 6px 14px; font-size: 0.85rem; border-color: var(--border); color: var(--text-muted);">׳ ׳§׳”
-                                ׳™׳•׳׳</button>
+                                style="padding: 6px 14px; font-size: 0.85rem; border-color: var(--border); color: var(--text-muted);">נקה
+                                יומן</button>
                         </div>
                     </div>
                     <pre id="logs"></pre>
@@ -1055,46 +1055,46 @@
                     <div class="card">
                         <h2 class="rajdhani"
                             style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="settings-2" style="width: 20px;"></i> ׳₪׳¢׳•׳׳•׳× ׳•׳›׳׳™׳
+                            <i data-lucide="settings-2" style="width: 20px;"></i> פעולות וכלים
                         </h2>
                         <p style="margin-bottom: 25px; color: var(--text-muted); font-size: 0.95rem;">
-                            ׳©׳•׳׳— ׳׳”׳—׳©׳‘׳•׳: <strong id="send-from-indicator"
-                                style="color: var(--primary); padding-right: 5px;">׳‘׳—׳¨ ׳—׳©׳‘׳•׳</strong>
+                            שולח מהחשבון: <strong id="send-from-indicator"
+                                style="color: var(--primary); padding-right: 5px;">בחר חשבון</strong>
                         </p>
 
                         <div style="margin-bottom: 20px;">
                             <label
-                                style="display:block; margin-bottom:8px; font-weight:700; font-family: 'Rajdhani', sans-serif;">׳׳¡׳₪׳¨
-                                ׳˜׳׳₪׳•׳ (׳₪׳•׳¨׳׳˜ ׳‘׳™׳ ׳׳׳•׳׳™):</label>
+                                style="display:block; margin-bottom:8px; font-weight:700; font-family: 'Rajdhani', sans-serif;">מספר
+                                טלפון (פורמט בינלאומי):</label>
                             <input type="text" id="manual-msg-to" placeholder="972501234567">
                         </div>
 
                         <div style="margin-bottom: 20px;">
                             <label
-                                style="display:block; margin-bottom:8px; font-weight:700; font-family: 'Rajdhani', sans-serif;">׳×׳•׳›׳
-                                ׳”׳”׳•׳“׳¢׳”:</label>
-                            <textarea id="manual-msg-content" rows="4" placeholder="׳”׳§׳׳“ ׳׳× ׳”׳”׳•׳“׳¢׳” ׳›׳׳..."></textarea>
+                                style="display:block; margin-bottom:8px; font-weight:700; font-family: 'Rajdhani', sans-serif;">תוכן
+                                ההודעה:</label>
+                            <textarea id="manual-msg-content" rows="4" placeholder="הקלד את ההודעה כאן..."></textarea>
                         </div>
 
                         <button onclick="sendManualMessage()" class="btn-primary"
                             style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                            ׳©׳׳— ׳”׳•׳“׳¢׳” <i data-lucide="send" style="width: 18px;"></i>
+                            שלח הודעה <i data-lucide="send" style="width: 18px;"></i>
                         </button>
                     </div>
 
                     <div class="card">
                         <h2 class="rajdhani"
                             style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="terminal" style="width: 20px;"></i> API ׳׳—׳™׳‘׳•׳¨ ׳—׳™׳¦׳•׳ ׳™
+                            <i data-lucide="terminal" style="width: 20px;"></i> API לחיבור חיצוני
                         </h2>
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5;">
-                            ׳‘׳׳₪׳©׳¨׳•׳×׳ ׳׳©׳׳•׳— ׳”׳•׳“׳¢׳•׳× ׳“׳¨׳ ׳”-API ׳‘׳׳׳¦׳¢׳•׳× ׳‘׳§׳©׳× HTTP POST ׳׳›׳ ׳׳¢׳¨׳›׳× ׳—׳™׳¦׳•׳ ׳™׳×.
+                            באפשרותך לשלוח הודעות דרך ה-API באמצעות בקשת HTTP POST מכל מערכת חיצונית.
                         </p>
 
                         <div
                             style="background: #000; padding: 20px; border-radius: 12px; border: 1px solid var(--border); position: relative;">
                             <button onclick="copyApiExample()"
-                                style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.05); color: var(--primary); border: 1px solid var(--primary); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: 'Rajdhani', sans-serif; font-weight: 700;">׳”׳¢׳×׳§</button>
+                                style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.05); color: var(--primary); border: 1px solid var(--primary); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: 'Rajdhani', sans-serif; font-weight: 700;">העתק</button>
                             <pre id="api-code-block"
                                 style="margin: 0; color: #d1d5db; white-space: pre-wrap; direction: ltr; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.4;">
 curl -X POST http://localhost:3000/api/send-message \
@@ -1107,12 +1107,12 @@ curl -X POST http://localhost:3000/api/send-message \
                         </div>
 
                         <div style="margin-top: 25px;">
-                            <h3 class="rajdhani" style="font-size: 1rem; color: var(--text);">׳₪׳¨׳׳˜׳¨׳™׳ ׳ ׳×׳׳›׳™׳:</h3>
+                            <h3 class="rajdhani" style="font-size: 1rem; color: var(--text);">פרמטרים נתמכים:</h3>
                             <ul
                                 style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.8; padding-right: 20px;">
-                                <li><strong style="color: var(--text);">sessionId:</strong> ׳׳–׳”׳” ׳”׳—׳©׳‘׳•׳ ׳”׳©׳•׳׳—.</li>
-                                <li><strong style="color: var(--text);">to:</strong> ׳׳¡׳₪׳¨ ׳™׳¢׳“ (972...).</li>
-                                <li><strong style="color: var(--text);">message:</strong> ׳×׳•׳›׳ ׳”׳”׳•׳“׳¢׳” (׳˜׳§׳¡׳˜ ׳—׳•׳₪׳©׳™).</li>
+                                <li><strong style="color: var(--text);">sessionId:</strong> מזהה החשבון השולח.</li>
+                                <li><strong style="color: var(--text);">to:</strong> מספר יעד (972...).</li>
+                                <li><strong style="color: var(--text);">message:</strong> תוכן ההודעה (טקסט חופשי).</li>
                             </ul>
                         </div>
                     </div>
@@ -1120,30 +1120,30 @@ curl -X POST http://localhost:3000/api/send-message \
                     <div class="card">
                         <h2 class="rajdhani"
                             style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="lock" style="width: 20px;"></i> ׳ ׳™׳”׳•׳ ׳ ׳¢׳™׳׳× ׳§׳‘׳•׳¦׳•׳×
+                            <i data-lucide="lock" style="width: 20px;"></i> ניהול נעילת קבוצות
                         </h2>
                         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5;">
-                            ׳ ׳¢׳ ׳׳• ׳₪׳×׳— ׳§׳‘׳•׳¦׳•׳× ׳›׳ ׳©׳¨׳§ ׳׳ ׳”׳׳™׳ ׳™׳•׳›׳׳• ׳׳©׳׳•׳— ׳”׳•׳“׳¢׳•׳× (׳׳• ׳›׳ ׳”׳—׳‘׳¨׳™׳).
+                            נעל או פתח קבוצות כך שרק מנהלים יוכלו לשלוח הודעות (או כל החברים).
                         </p>
 
                         <div style="margin-bottom: 20px;">
                             <label
-                                style="display:block; margin-bottom:8px; font-weight:700; font-family: 'Rajdhani', sans-serif;">׳׳–׳”׳”
-                                ׳§׳‘׳•׳¦׳”:</label>
+                                style="display:block; margin-bottom:8px; font-weight:700; font-family: 'Rajdhani', sans-serif;">מזהה
+                                קבוצה:</label>
                             <input type="text" id="group-id-input" placeholder="120363123456789012@g.us">
                             <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">
-                                נ’¡ ׳˜׳™׳₪: ׳×׳•׳›׳ ׳׳׳¦׳•׳ ׳׳× ׳׳–׳”׳” ׳”׳§׳‘׳•׳¦׳” ׳‘׳™׳•׳׳ ׳”׳₪׳¢׳™׳׳•׳× ׳›׳׳©׳¨ ׳׳×׳§׳‘׳׳× ׳”׳•׳“׳¢׳” ׳׳”׳§׳‘׳•׳¦׳”
+                                💡 טיפ: תוכל למצוא את מזהה הקבוצה ביומן הפעילות כאשר מתקבלת הודעה מהקבוצה
                             </p>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                             <button onclick="lockGroup()" class="btn-primary"
                                 style="display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(239, 68, 68, 0.8);">
-                                <i data-lucide="lock" style="width: 16px;"></i> ׳ ׳¢׳ ׳§׳‘׳•׳¦׳”
+                                <i data-lucide="lock" style="width: 16px;"></i> נעל קבוצה
                             </button>
                             <button onclick="unlockGroup()" class="btn-primary"
                                 style="display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(34, 197, 94, 0.8);">
-                                <i data-lucide="unlock" style="width: 16px;"></i> ׳₪׳×׳— ׳§׳‘׳•׳¦׳”
+                                <i data-lucide="unlock" style="width: 16px;"></i> פתח קבוצה
                             </button>
                         </div>
 
@@ -1152,34 +1152,34 @@ curl -X POST http://localhost:3000/api/send-message \
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                                 <h3 class="rajdhani"
                                     style="font-size: 0.95rem; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px;">
-                                    <i data-lucide="users" style="width: 16px; color: var(--primary);"></i> ׳§׳‘׳•׳¦׳•׳×
-                                    ׳‘׳ ׳™׳”׳•׳׳
+                                    <i data-lucide="users" style="width: 16px; color: var(--primary);"></i> קבוצות
+                                    בניהולך
                                 </h3>
                                 <button onclick="loadManagedGroups()" class="btn-quick-filter"
                                     style="font-size: 0.65rem; padding: 2px 8px;">
                                     <i data-lucide="refresh-cw"
                                         style="width: 10px; margin-left: 4px; display: inline-block; vertical-align: middle;"></i>
-                                    ׳¨׳¢׳ ׳ ׳¨׳©׳™׳׳”
+                                    רענן רשימה
                                 </button>
                             </div>
                             <div id="managed-groups-container"
                                 style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.15); border-radius: 12px; border: 1px solid var(--border); padding: 8px;">
                                 <p
                                     style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">
-                                    ׳׳—׳¥ ׳¢׳ "׳¨׳¢׳ ׳ ׳¨׳©׳™׳׳”" ׳›׳“׳™ ׳׳¨׳׳•׳× ׳§׳‘׳•׳¦׳•׳× ׳‘׳ ׳™׳”׳•׳׳</p>
+                                    לחץ על "רענן רשימה" כדי לראות קבוצות בניהולך</p>
                             </div>
                         </div>
 
                         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);">
                             <h3 class="rajdhani" style="font-size: 0.95rem; color: var(--text); margin-bottom: 15px;">
-                                <i data-lucide="code" style="width: 16px; margin-left: 6px;"></i> API ׳׳ ׳¢׳™׳׳× ׳§׳‘׳•׳¦׳•׳×:
+                                <i data-lucide="code" style="width: 16px; margin-left: 6px;"></i> API לנעילת קבוצות:
                             </h3>
 
                             <div
                                 style="background: #000; padding: 15px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 15px;">
                                 <p
                                     style="font-size: 0.75rem; color: var(--primary); margin: 0 0 10px 0; font-weight: 700;">
-                                    ׳ ׳¢׳™׳׳× ׳§׳‘׳•׳¦׳” (׳¨׳§ ׳׳ ׳”׳׳™׳):</p>
+                                    נעילת קבוצה (רק מנהלים):</p>
                                 <pre
                                     style="margin: 0; color: #d1d5db; white-space: pre-wrap; direction: ltr; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; line-height: 1.4;">curl -X POST http://localhost:3000/api/group/lock \
   -H "Content-Type: application/json" \
@@ -1192,7 +1192,7 @@ curl -X POST http://localhost:3000/api/send-message \
                             <div
                                 style="background: #000; padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
                                 <p style="font-size: 0.75rem; color: #22c55e; margin: 0 0 10px 0; font-weight: 700;">
-                                    ׳₪׳×׳™׳—׳× ׳§׳‘׳•׳¦׳” (׳›׳ ׳”׳—׳‘׳¨׳™׳):</p>
+                                    פתיחת קבוצה (כל החברים):</p>
                                 <pre
                                     style="margin: 0; color: #d1d5db; white-space: pre-wrap; direction: ltr; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; line-height: 1.4;">curl -X POST http://localhost:3000/api/group/unlock \
   -H "Content-Type: application/json" \
@@ -1213,30 +1213,30 @@ curl -X POST http://localhost:3000/api/send-message \
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h2 class="rajdhani"
                             style="color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;">
-                            <i data-lucide="users" style="width: 20px;"></i> ׳¨׳©׳™׳׳× ׳׳ ׳©׳™ ׳§׳©׳¨
+                            <i data-lucide="users" style="width: 20px;"></i> רשימת אנשי קשר
                         </h2>
                         <div style="display: flex; gap: 12px; align-items: center;">
                             <button onclick="exportContactsCSV()" class="btn-primary"
                                 style="padding: 8px 16px; font-size: 0.85rem;">
-                                <i data-lucide="download" style="width: 16px; margin-left: 6px;"></i> ׳™׳™׳¦׳ ׳-CSV
+                                <i data-lucide="download" style="width: 16px; margin-left: 6px;"></i> ייצא ל-CSV
                             </button>
                             <button onclick="loadContacts()" class="btn-quick-filter">
-                                <i data-lucide="refresh-cw" style="width: 14px; margin-left: 6px;"></i> ׳¨׳¢׳ ׳ ׳¨׳©׳™׳׳”
+                                <i data-lucide="refresh-cw" style="width: 14px; margin-left: 6px;"></i> רענן רשימה
                             </button>
                         </div>
                     </div>
 
                     <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-                        <input type="text" id="contact-search" placeholder="׳—׳™׳₪׳•׳© ׳׳₪׳™ ׳©׳ ׳׳• ׳׳¡׳₪׳¨..."
+                        <input type="text" id="contact-search" placeholder="חיפוש לפי שם או מספר..."
                             oninput="filterContacts()" style="flex-grow: 1;">
 
                         <div style="display: flex; gap: 5px;">
                             <button onclick="setContactFilter('all')" class="btn-quick-filter active"
-                                id="btn-filter-all">׳”׳›׳</button>
+                                id="btn-filter-all">הכל</button>
                             <button onclick="setContactFilter('private')" class="btn-quick-filter"
-                                id="btn-filter-private">׳₪׳¨׳˜׳™</button>
+                                id="btn-filter-private">פרטי</button>
                             <button onclick="setContactFilter('group')" class="btn-quick-filter"
-                                id="btn-filter-group">׳§׳‘׳•׳¦׳•׳×</button>
+                                id="btn-filter-group">קבוצות</button>
                         </div>
                     </div>
 
@@ -1248,29 +1248,29 @@ curl -X POST http://localhost:3000/api/send-message \
                                     <th style="padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;"
                                         onclick="sortContacts('name')">
                                         <div style="display: flex; align-items: center; gap: 5px;">
-                                            ׳©׳ <span id="sort-icon-name" class="sort-icon"></span>
+                                            שם <span id="sort-icon-name" class="sort-icon"></span>
                                         </div>
                                     </th>
                                     <th style="padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;"
                                         onclick="sortContacts('number')">
                                         <div style="display: flex; align-items: center; gap: 5px;">
-                                            ׳׳¡׳₪׳¨ <span id="sort-icon-number" class="sort-icon"></span>
+                                            מספר <span id="sort-icon-number" class="sort-icon"></span>
                                         </div>
                                     </th>
                                     <th style="padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;"
                                         onclick="sortContacts('type')">
                                         <div style="display: flex; align-items: center; gap: 5px;">
-                                            ׳¡׳•׳’ <span id="sort-icon-type" class="sort-icon"></span>
+                                            סוג <span id="sort-icon-type" class="sort-icon"></span>
                                         </div>
                                     </th>
-                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">׳₪׳¢׳•׳׳•׳×</th>
+                                    <th style="padding: 12px; border-bottom: 1px solid var(--border);">פעולות</th>
                                 </tr>
                             </thead>
                             <tbody id="contacts-table-body">
                                 <tr>
                                     <td colspan="4"
                                         style="padding: 30px; text-align: center; color: var(--text-muted);">
-                                        ׳׳—׳¥ ׳¢׳ "׳¨׳¢׳ ׳ ׳¨׳©׳™׳׳”" ׳›׳“׳™ ׳׳˜׳¢׳•׳ ׳׳ ׳©׳™ ׳§׳©׳¨
+                                        לחץ על "רענן רשימה" כדי לטעון אנשי קשר
                                     </td>
                                 </tr>
                             </tbody>
@@ -1286,14 +1286,14 @@ curl -X POST http://localhost:3000/api/send-message \
             <div class="modal-header">
                 <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
                     <h3 id="modal-group-name" class="modal-title rajdhani"
-                        style="margin:0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">׳—׳‘׳¨׳™ ׳”׳§׳‘׳•׳¦׳”
+                        style="margin:0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">חברי הקבוצה
                     </h3>
-                    <button id="btn-rename-group" class="btn-action" title="׳©׳ ׳” ׳©׳ ׳§׳‘׳•׳¦׳”">
+                    <button id="btn-rename-group" class="btn-action" title="שנה שם קבוצה">
                         <i data-lucide="edit-2" style="width: 14px;"></i>
                     </button>
-                    <button id="btn-export-group" class="btn-action" title="׳™׳™׳¦׳ ׳—׳‘׳¨׳™ ׳§׳‘׳•׳¦׳” ׳-CSV"
+                    <button id="btn-export-group" class="btn-action" title="ייצא חברי קבוצה ל-CSV"
                         style="color: var(--primary); border-color: rgba(6, 182, 212, 0.4);">
-                        <i data-lucide="download" style="width: 14px; margin-left: 4px;"></i> ׳™׳™׳¦׳ CSV
+                        <i data-lucide="download" style="width: 14px; margin-left: 4px;"></i> ייצא CSV
                     </button>
                 </div>
                 <span class="close-modal" onclick="closeMembersModal()">
@@ -1319,55 +1319,6 @@ curl -X POST http://localhost:3000/api/send-message \
         const statusText = document.getElementById('current-status-text');
         const logsEl = document.getElementById('logs');
         const rulesContainer = document.getElementById('rules-container');
-
-        function hebrewScore(text) {
-            const m = (text || '').match(/[\u0590-\u05FF]/g);
-            return m ? m.length : 0;
-        }
-
-        function maybeFixMojibake(text) {
-            if (typeof text !== 'string' || !text) return text;
-            const suspicious = /[\u0080-\u009F]/.test(text) || text.includes('\u05F3') || text.includes('Ã') || text.includes('Â');
-            let out = text;
-            if (!suspicious) return out;
-            try {
-                const bytes = Uint8Array.from(Array.from(out, ch => ch.charCodeAt(0) & 0xFF));
-                const fixed = new TextDecoder('utf-8').decode(bytes);
-                if (hebrewScore(fixed) >= hebrewScore(out)) out = fixed;
-            } catch (e) { }
-
-            // Recovery for UTF-8 bytes that were decoded as Windows-1255 (common with Hebrew mojibake).
-            try {
-                const bytes = [];
-                let converted = false;
-                for (const ch of out) {
-                    const code = ch.charCodeAt(0);
-                    if (code <= 0xFF) {
-                        bytes.push(code);
-                    } else if (code === 0x05F3) { // GERESH, often comes from byte 0xD7
-                        bytes.push(0xD7);
-                        converted = true;
-                    } else {
-                        converted = false;
-                        break;
-                    }
-                }
-                if (converted && bytes.length > 0) {
-                    const fixed = new TextDecoder('utf-8').decode(new Uint8Array(bytes));
-                    if (hebrewScore(fixed) >= hebrewScore(out)) out = fixed;
-                }
-            } catch (e) { }
-
-            out = out
-                .replace(/[\u0080-\u009F\uFFFD]/g, '')
-                .replace(/[©™]/g, '')
-                .replace(/\u05F3/g, '')
-                .replace(/^[\u0590-\u05FF]\s+(?=[\u0590-\u05FF])/u, '')
-                .replace(/\s{2,}/g, ' ')
-                .trim();
-
-            return out || text;
-        }
 
         // Socket logic
         socket.on('init_sessions', (data) => {
@@ -1411,12 +1362,7 @@ curl -X POST http://localhost:3000/api/send-message \
             // Optional: style system logs differently
             if (isSystem) div.style.color = 'var(--primary)';
 
-            const cleanMsg = maybeFixMojibake(data.message);
-            const timeEl = document.createElement('span');
-            timeEl.className = 'log-time';
-            timeEl.textContent = `[${time}]`;
-            div.appendChild(timeEl);
-            div.appendChild(document.createTextNode(` ${cleanMsg}`));
+            div.innerHTML = `<span class="log-time">[${time}]</span> ${data.message}`;
             logsEl.appendChild(div);
             logsEl.scrollTop = logsEl.scrollHeight;
         });
@@ -1440,7 +1386,7 @@ curl -X POST http://localhost:3000/api/send-message \
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span class="session-name">${id}</span>
                         <div style="display:flex; gap:5px;">
-                            <span onclick="renameSession('${id}', event)" style="padding: 5px; cursor: pointer; color: var(--primary); display: flex; align-items: center;" title="׳©׳ ׳” ׳©׳">
+                            <span onclick="renameSession('${id}', event)" style="padding: 5px; cursor: pointer; color: var(--primary); display: flex; align-items: center;" title="שנה שם">
                                 <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
                             </span>
                         </div>
@@ -1454,16 +1400,16 @@ curl -X POST http://localhost:3000/api/send-message \
 
         async function renameSession(oldId, event) {
             event.stopPropagation(); // Prevent selecting the session
-            const newId = prompt(`׳”׳›׳ ׳¡ ׳©׳ ׳—׳“׳© ׳¢׳‘׳•׳¨ "${oldId}":\n(׳׳•׳×׳™׳•׳× ׳‘׳׳ ׳’׳׳™׳×, ׳׳¡׳₪׳¨׳™׳, - ׳׳• _)`);
+            const newId = prompt(`הכנס שם חדש עבור "${oldId}":\n(אותיות באנגלית, מספרים, - או _)`);
 
             if (newId && newId !== oldId) {
                 // Basic validation
                 if (!/^[a-zA-Z0-9_-]+$/.test(newId)) {
-                    alert('׳©׳ ׳׳ ׳—׳•׳§׳™. ׳׳ ׳ ׳”׳©׳×׳׳© ׳¨׳§ ׳‘׳׳•׳×׳™׳•׳× ׳‘׳׳ ׳’׳׳™׳×, ׳׳¡׳₪׳¨׳™׳, ׳׳§׳£ ׳׳• ׳§׳• ׳×׳—׳×׳•׳.');
+                    alert('שם לא חוקי. אנא השתמש רק באותיות באנגלית, מספרים, מקף או קו תחתון.');
                     return;
                 }
 
-                if (confirm(`׳”׳׳ ׳׳©׳ ׳•׳× ׳׳× ׳©׳ ׳”׳—׳©׳‘׳•׳ ׳-${oldId} ׳-${newId}?\n׳”׳₪׳¢׳•׳׳” ׳×׳׳×׳—׳ ׳׳× ׳”׳—׳©׳‘׳•׳.`)) {
+                if (confirm(`האם לשנות את שם החשבון מ-${oldId} ל-${newId}?\nהפעולה תאתחל את החשבון.`)) {
                     const res = await fetch('/api/sessions/rename', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1471,15 +1417,15 @@ curl -X POST http://localhost:3000/api/send-message \
                     });
 
                     if (res.ok) {
-                        alert(`׳©׳ ׳”׳—׳©׳‘׳•׳ ׳©׳•׳ ׳” ׳‘׳”׳¦׳׳—׳” ׳-${newId}!`);
+                        alert(`שם החשבון שונה בהצלחה ל-${newId}!`);
                         if (selectedSessionId === oldId) {
                             selectedSessionId = null; // Force re-select or wait for update
-                            document.getElementById('active-session-indicator').innerHTML = '<i data-lucide="zap" style="width: 16px; margin-left: 6px; color: var(--primary);"></i> <span id="header-session-name">׳‘׳—׳¨ ׳—׳©׳‘׳•׳</span>';
+                            document.getElementById('active-session-indicator').innerHTML = '<i data-lucide="zap" style="width: 16px; margin-left: 6px; color: var(--primary);"></i> <span id="header-session-name">בחר חשבון</span>';
                             lucide.createIcons();
                         }
                     } else {
                         const err = await res.json();
-                        alert('׳©׳’׳™׳׳”: ' + err.error);
+                        alert('שגיאה: ' + err.error);
                     }
                 }
             }
@@ -1550,18 +1496,18 @@ curl -X POST http://localhost:3000/api/send-message \
                 const res = await fetch(`/api/groups?sessionId=${selectedSessionId}`);
 
                 if (res.status === 404) {
-                    container.innerHTML = '<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 15px;">׳©׳’׳™׳׳”: ׳”׳©׳¨׳× ׳׳ ׳׳–׳”׳” ׳׳× ׳”׳₪׳§׳•׳“׳” (404). ׳ ׳¡׳” ׳׳¨׳¢׳ ׳ ׳׳× ׳”׳“׳£.</p>';
+                    container.innerHTML = '<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 15px;">שגיאה: השרת לא מזהה את הפקודה (404). נסה לרענן את הדף.</p>';
                     return;
                 }
 
                 if (res.status === 503) {
-                    container.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">׳”׳—׳©׳‘׳•׳ ׳¢׳“׳™׳™׳ ׳‘׳˜׳¢׳™׳ ׳”... ׳ ׳¡׳” ׳©׳•׳‘ ׳‘׳¢׳•׳“ ׳¨׳’׳¢</p>';
+                    container.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">החשבון עדיין בטעינה... נסה שוב בעוד רגע</p>';
                     return;
                 }
 
                 const contentType = res.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
-                    throw new TypeError("׳”׳©׳¨׳× ׳”׳—׳–׳™׳¨ ׳×׳©׳•׳‘׳” ׳©׳׳™׳ ׳” JSON");
+                    throw new TypeError("השרת החזיר תשובה שאינה JSON");
                 }
 
                 const data = await res.json();
@@ -1569,7 +1515,7 @@ curl -X POST http://localhost:3000/api/send-message \
 
                 if (res.ok && data.groups) {
                     if (data.groups.length === 0) {
-                        container.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">׳׳ ׳ ׳׳¦׳׳• ׳§׳‘׳•׳¦׳•׳× ׳‘׳ ׳™׳”׳•׳׳</p>';
+                        container.innerHTML = '<p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px;">לא נמצאו קבוצות בניהולך</p>';
                     } else {
                         container.innerHTML = '';
                         data.groups.forEach(group => {
@@ -1588,13 +1534,13 @@ curl -X POST http://localhost:3000/api/send-message \
                             div.innerHTML = `
                                 <div style="display: flex; align-items: center; overflow: hidden; flex-grow: 1;">
                                     <span class="group-status-badge ${group.isLocked ? 'badge-locked' : 'badge-unlocked'}">
-                                        ${group.isLocked ? '׳ ׳¢׳•׳' : '׳₪׳×׳•׳—'}
+                                        ${group.isLocked ? 'נעול' : 'פתוח'}
                                     </span>
                                     <div class="group-name" title="${group.name}">${group.name}</div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <div class="group-participants" onclick="showGroupMembers('${group.id}', '${group.name.replace(/'/g, "\\'")}')" title="׳”׳¦׳’ ׳׳©׳×׳×׳₪׳™׳" style="cursor: pointer;">${group.participantsCount}</div>
-                                    <button class="btn-leave-group" onclick="leaveGroup('${group.id}', '${group.name.replace(/'/g, "\\'")}')" title="׳¦׳ ׳׳”׳§׳‘׳•׳¦׳”" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 4px; display: flex; align-items: center; opacity: 0.6; transition: opacity 0.2s;">
+                                    <div class="group-participants" onclick="showGroupMembers('${group.id}', '${group.name.replace(/'/g, "\\'")}')" title="הצג משתתפים" style="cursor: pointer;">${group.participantsCount}</div>
+                                    <button class="btn-leave-group" onclick="leaveGroup('${group.id}', '${group.name.replace(/'/g, "\\'")}')" title="צא מהקבוצה" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 4px; display: flex; align-items: center; opacity: 0.6; transition: opacity 0.2s;">
                                         <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
                                     </button>
                                 </div>
@@ -1603,24 +1549,24 @@ curl -X POST http://localhost:3000/api/send-message \
                         });
                     }
                 } else {
-                    container.innerHTML = `<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 10px;">׳©׳’׳™׳׳”: ${data.error || '׳׳ ׳ ׳™׳×׳ ׳׳˜׳¢׳•׳ ׳§׳‘׳•׳¦׳•׳×'}</p>`;
+                    container.innerHTML = `<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 10px;">שגיאה: ${data.error || 'לא ניתן לטעון קבוצות'}</p>`;
                 }
             } catch (err) {
                 console.error('Fetch error:', err);
-                container.innerHTML = `<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 10px;">׳©׳’׳™׳׳× ׳×׳§׳©׳•׳¨׳× ׳¢׳ ׳”׳©׳¨׳×</p>`;
+                container.innerHTML = `<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 10px;">שגיאת תקשורת עם השרת</p>`;
             }
             lucide.createIcons();
         }
 
         async function lockGroup() {
             if (!selectedSessionId) {
-                alert('׳׳ ׳ ׳‘׳—׳¨ ׳—׳©׳‘׳•׳ ׳×׳—׳™׳׳”');
+                alert('אנא בחר חשבון תחילה');
                 return;
             }
 
             const groupId = document.getElementById('group-id-input').value.trim();
             if (!groupId) {
-                alert('׳׳ ׳ ׳”׳›׳ ׳¡ ׳׳–׳”׳” ׳§׳‘׳•׳¦׳”');
+                alert('אנא הכנס מזהה קבוצה');
                 return;
             }
 
@@ -1637,24 +1583,24 @@ curl -X POST http://localhost:3000/api/send-message \
                 const data = await res.json();
 
                 if (res.ok) {
-                    alert(`נ”’ ׳”׳§׳‘׳•׳¦׳” "${data.groupName}" ׳ ׳ ׳¢׳׳” ׳‘׳”׳¦׳׳—׳”!\n\n׳¨׳§ ׳׳ ׳”׳׳™׳ ׳™׳›׳•׳׳™׳ ׳׳©׳׳•׳— ׳”׳•׳“׳¢׳•׳×.`);
+                    alert(`🔒 הקבוצה "${data.groupName}" ננעלה בהצלחה!\n\nרק מנהלים יכולים לשלוח הודעות.`);
                 } else {
-                    alert('ג ׳©׳’׳™׳׳”: ' + (data.error || '׳©׳’׳™׳׳” ׳׳ ׳™׳“׳•׳¢׳”'));
+                    alert('❌ שגיאה: ' + (data.error || 'שגיאה לא ידועה'));
                 }
             } catch (err) {
-                alert('ג ׳©׳’׳™׳׳” ׳‘׳×׳§׳©׳•׳¨׳×: ' + err.message);
+                alert('❌ שגיאה בתקשורת: ' + err.message);
             }
         }
 
         async function unlockGroup() {
             if (!selectedSessionId) {
-                alert('׳׳ ׳ ׳‘׳—׳¨ ׳—׳©׳‘׳•׳ ׳×׳—׳™׳׳”');
+                alert('אנא בחר חשבון תחילה');
                 return;
             }
 
             const groupId = document.getElementById('group-id-input').value.trim();
             if (!groupId) {
-                alert('׳׳ ׳ ׳”׳›׳ ׳¡ ׳׳–׳”׳” ׳§׳‘׳•׳¦׳”');
+                alert('אנא הכנס מזהה קבוצה');
                 return;
             }
 
@@ -1671,17 +1617,17 @@ curl -X POST http://localhost:3000/api/send-message \
                 const data = await res.json();
 
                 if (res.ok) {
-                    alert(`נ”“ ׳”׳§׳‘׳•׳¦׳” "${data.groupName}" ׳ ׳₪׳×׳—׳” ׳‘׳”׳¦׳׳—׳”!\n\n׳›׳ ׳”׳—׳‘׳¨׳™׳ ׳™׳›׳•׳׳™׳ ׳׳©׳׳•׳— ׳”׳•׳“׳¢׳•׳×.`);
+                    alert(`🔓 הקבוצה "${data.groupName}" נפתחה בהצלחה!\n\nכל החברים יכולים לשלוח הודעות.`);
                 } else {
-                    alert('ג ׳©׳’׳™׳׳”: ' + (data.error || '׳©׳’׳™׳׳” ׳׳ ׳™׳“׳•׳¢׳”'));
+                    alert('❌ שגיאה: ' + (data.error || 'שגיאה לא ידועה'));
                 }
             } catch (err) {
-                alert('ג ׳©׳’׳™׳׳” ׳‘׳×׳§׳©׳•׳¨׳×: ' + err.message);
+                alert('❌ שגיאה בתקשורת: ' + err.message);
             }
         }
 
         async function renameGroup(groupId, currentName) {
-            const newName = prompt(`׳”׳›׳ ׳¡ ׳©׳ ׳—׳“׳© ׳׳§׳‘׳•׳¦׳”:`, currentName);
+            const newName = prompt(`הכנס שם חדש לקבוצה:`, currentName);
             if (!newName || newName === currentName) return;
 
             try {
@@ -1697,14 +1643,14 @@ curl -X POST http://localhost:3000/api/send-message \
 
                 const data = await res.json();
                 if (res.ok) {
-                    alert('ג… ׳©׳ ׳”׳§׳‘׳•׳¦׳” ׳©׳•׳ ׳” ׳‘׳”׳¦׳׳—׳”!');
+                    alert('✅ שם הקבוצה שונה בהצלחה!');
                     document.getElementById('modal-group-name').innerText = newName;
                     loadManagedGroups(); // Refresh the list in the background
                 } else {
-                    alert(`ג ׳©׳’׳™׳׳”: ${data.error}`);
+                    alert(`❌ שגיאה: ${data.error}`);
                 }
             } catch (err) {
-                alert('ג ׳©׳’׳™׳׳× ׳×׳§׳©׳•׳¨׳×');
+                alert('❌ שגיאת תקשורת');
             }
         }
 
@@ -1728,36 +1674,36 @@ curl -X POST http://localhost:3000/api/send-message \
                 }
 
                 // Special handling for the bot itself
-                let finalName = member.isMe ? "׳׳ ׳™ (׳”׳‘׳•׳˜)" : (matchedContactName || member.name || member.number);
+                let finalName = member.isMe ? "אני (הבוט)" : (matchedContactName || member.name || member.number);
                 // If the name is just the number, and we found a matched name, prefer the matched name
                 if (finalName === member.number && matchedContactName) finalName = matchedContactName;
 
                 let displayName = finalName;
-                let subText = member.isMe ? member.number : (displayName !== member.number ? member.number : '׳׳׳ ׳©׳ ׳©׳׳•׳¨');
+                let subText = member.isMe ? member.number : (displayName !== member.number ? member.number : 'ללא שם שמור');
                 const hasName = member.isMe || (displayName && displayName !== member.number);
 
                 div.innerHTML = `
                      <div style="display: flex; flex-direction: column; overflow: hidden; flex-grow: 1;">
                          <div style="display: flex; align-items: center; gap: 8px;">
                              <span class="member-name" style="font-weight: 700; font-size: 1.05rem; color: ${member.isMe ? '#10b981' : (hasName ? 'var(--primary)' : 'var(--text)')}">${displayName}</span>
-                             ${member.isAdmin ? '<span class="member-admin">׳׳ ׳”׳</span>' : ''}
+                             ${member.isAdmin ? '<span class="member-admin">מנהל</span>' : ''}
                          </div>
                          <span style="font-size: 0.8rem; color: var(--text-muted); direction: ltr; text-align: right; margin-top: 2px; font-family: monospace;">${subText}</span>
                      </div>
                      <div class="member-actions" style="align-items: center; gap: 12px;">
                          ${!member.isMe ? `
                              ${member.isAdmin ?
-                            `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'demote', '${groupName.replace(/'/g, "\\'")}')" title="׳”׳¡׳¨ ׳׳ ׳™׳”׳•׳">
-                                     <i data-lucide="shield-off" style="width:14px;"></i> ׳”׳¡׳¨ ׳ ׳™׳”׳•׳
+                            `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'demote', '${groupName.replace(/'/g, "\\'")}')" title="הסר מניהול">
+                                     <i data-lucide="shield-off" style="width:14px;"></i> הסר ניהול
                                  </button>` :
-                            `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'promote', '${groupName.replace(/'/g, "\\'")}')" title="׳”׳₪׳•׳ ׳׳׳ ׳”׳">
-                                     <i data-lucide="shield-check" style="width:14px;"></i> ׳׳ ׳”׳
+                            `<button class="btn-action" onclick="memberAction('${groupId}', '${member.id}', 'promote', '${groupName.replace(/'/g, "\\'")}')" title="הפוך למנהל">
+                                     <i data-lucide="shield-check" style="width:14px;"></i> מנהל
                                  </button>`
                         }
-                             <div class="btn-remove-large" onclick="memberAction('${groupId}', '${member.id}', 'remove', '${groupName.replace(/'/g, "\\'")}')" title="׳”׳¡׳¨ ׳׳”׳§׳‘׳•׳¦׳”">
+                             <div class="btn-remove-large" onclick="memberAction('${groupId}', '${member.id}', 'remove', '${groupName.replace(/'/g, "\\'")}')" title="הסר מהקבוצה">
                                  <i data-lucide="x" style="width:20px; height:20px; stroke-width: 3;"></i>
                              </div>
-                         ` : '<span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">׳—׳©׳‘׳•׳ ׳₪׳¢׳™׳</span>'}
+                         ` : '<span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">חשבון פעיל</span>'}
                      </div>
                  `;
                 list.appendChild(div);
@@ -1779,7 +1725,7 @@ curl -X POST http://localhost:3000/api/send-message \
             const exportBtn = document.getElementById('btn-export-group');
             exportBtn.onclick = () => exportGroupMembersCSV(groupName);
 
-            list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div><p style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">׳˜׳•׳¢׳ ׳ ׳×׳•׳ ׳™׳...</p></div>';
+            list.innerHTML = '<div style="text-align:center; padding: 20px;"><div class="loader" style="width:25px; height:25px; margin: 0 auto; border-width: 2px;"></div><p style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">טוען נתונים...</p></div>';
             modal.style.display = 'flex';
 
             // Allow storing current members to refresh view later
@@ -1810,10 +1756,10 @@ curl -X POST http://localhost:3000/api/send-message \
                     window.lastGroupMembers = data.members; // Store for re-rendering
                     renderGroupMembersList(data.members, groupId, groupName);
                 } else {
-                    list.innerHTML = `<p style="color: var(--danger); text-align: center;">׳©׳’׳™׳׳”: ${data.error || '׳׳ ׳ ׳™׳×׳ ׳׳˜׳¢׳•׳ ׳׳©׳×׳×׳₪׳™׳'}</p>`;
+                    list.innerHTML = `<p style="color: var(--danger); text-align: center;">שגיאה: ${data.error || 'לא ניתן לטעון משתתפים'}</p>`;
                 }
             } catch (err) {
-                list.innerHTML = '<p style="color: var(--danger); text-align: center;">׳©׳’׳™׳׳× ׳×׳§׳©׳•׳¨׳×</p>';
+                list.innerHTML = '<p style="color: var(--danger); text-align: center;">שגיאת תקשורת</p>';
             }
         }
 
@@ -1823,8 +1769,8 @@ curl -X POST http://localhost:3000/api/send-message \
         }
 
         async function memberAction(groupId, participantId, action, groupName) {
-            const actionLabels = { 'remove': '׳׳”׳¡׳™׳¨ ׳׳”׳§׳‘׳•׳¦׳”', 'promote': '׳׳”׳₪׳•׳ ׳׳׳ ׳”׳', 'demote': '׳׳”׳¡׳™׳¨ ׳׳ ׳™׳”׳•׳' };
-            const confirmMsg = `׳”׳׳ ׳׳×׳” ׳‘׳˜׳•׳— ׳©׳‘׳¨׳¦׳•׳ ׳ ${actionLabels[action]} ׳׳× ׳”׳׳©׳×׳×׳£?`;
+            const actionLabels = { 'remove': 'להסיר מהקבוצה', 'promote': 'להפוך למנהל', 'demote': 'להסיר מניהול' };
+            const confirmMsg = `האם אתה בטוח שברצונך ${actionLabels[action]} את המשתתף?`;
 
             if (!confirm(confirmMsg)) return;
 
@@ -1842,18 +1788,18 @@ curl -X POST http://localhost:3000/api/send-message \
 
                 const data = await res.json();
                 if (res.ok) {
-                    alert(`ג… ׳”׳₪׳¢׳•׳׳” ׳‘׳•׳¦׳¢׳”: ${data.message}`);
+                    alert(`✅ הפעולה בוצעה: ${data.message}`);
                     showGroupMembers(groupId, groupName); // Refresh members list
                 } else {
-                    alert(`ג ׳©׳’׳™׳׳”: ${data.error}`);
+                    alert(`❌ שגיאה: ${data.error}`);
                 }
             } catch (err) {
-                alert('ג ׳©׳’׳™׳׳× ׳×׳§׳©׳•׳¨׳×');
+                alert('❌ שגיאת תקשורת');
             }
         }
 
         async function leaveGroup(groupId, groupName) {
-            const confirmLeave = confirm(`ג ן¸ ׳׳–׳”׳¨׳”!\n\n׳”׳׳ ׳׳×׳” ׳‘׳˜׳•׳— ׳©׳‘׳¨׳¦׳•׳ ׳ ׳׳¦׳׳× ׳׳”׳§׳‘׳•׳¦׳” "${groupName}"?\n׳”׳₪׳¢׳•׳׳” ׳׳™׳ ׳” ׳ ׳™׳×׳ ׳× ׳׳‘׳™׳˜׳•׳ ׳“׳¨׳ ׳”׳׳¢׳¨׳›׳×.`);
+            const confirmLeave = confirm(`⚠️ אזהרה!\n\nהאם אתה בטוח שברצונך לצאת מהקבוצה "${groupName}"?\nהפעולה אינה ניתנת לביטול דרך המערכת.`);
 
             if (confirmLeave) {
                 try {
@@ -1869,13 +1815,13 @@ curl -X POST http://localhost:3000/api/send-message \
                     const data = await res.json();
 
                     if (res.ok) {
-                        alert(`נ× ׳™׳¦׳׳× ׳׳”׳§׳‘׳•׳¦׳” "${groupName}" ׳‘׳”׳¦׳׳—׳”.`);
+                        alert(`🚪 יצאת מהקבוצה "${groupName}" בהצלחה.`);
                         loadManagedGroups(); // Refresh list
                     } else {
-                        alert('ג ׳©׳’׳™׳׳”: ' + (data.error || '׳©׳’׳™׳׳” ׳׳ ׳™׳“׳•׳¢׳”'));
+                        alert('❌ שגיאה: ' + (data.error || 'שגיאה לא ידועה'));
                     }
                 } catch (err) {
-                    alert('ג ׳©׳’׳™׳׳” ׳‘׳×׳§׳©׳•׳¨׳×: ' + err.message);
+                    alert('❌ שגיאה בתקשורת: ' + err.message);
                 }
             }
         }
@@ -1901,15 +1847,9 @@ curl -X POST http://localhost:3000/api/send-message \
                         // Match timestamp and message
                         const match = logLine.match(/\[(.*?)\] (.*)/);
                         if (match) {
-                            const cleanTime = maybeFixMojibake(match[1]);
-                            const cleanMsg = maybeFixMojibake(match[2]);
-                            const timeEl = document.createElement('span');
-                            timeEl.className = 'log-time';
-                            timeEl.textContent = `[${cleanTime}]`;
-                            div.appendChild(timeEl);
-                            div.appendChild(document.createTextNode(` ${cleanMsg}`));
+                            div.innerHTML = `<span class="log-time">[${match[1]}]</span> ${match[2]}`;
                         } else {
-                            div.innerText = maybeFixMojibake(logLine);
+                            div.innerText = logLine;
                         }
                         logsEl.appendChild(div);
                     });
@@ -1922,7 +1862,7 @@ curl -X POST http://localhost:3000/api/send-message \
 
         async function sendManualMessage() {
             if (!selectedSessionId) {
-                alert('׳׳ ׳ ׳‘׳—׳¨ ׳—׳©׳‘׳•׳ ׳׳׳ ׳• ׳×׳¨׳¦׳” ׳׳©׳׳•׳— ׳”׳•׳“׳¢׳” (׳‘׳¡׳¨׳’׳ ׳”׳¦׳“).');
+                alert('אנא בחר חשבון ממנו תרצה לשלוח הודעה (בסרגל הצד).');
                 return;
             }
 
@@ -1935,7 +1875,7 @@ curl -X POST http://localhost:3000/api/send-message \
             const message = document.getElementById('manual-msg-content').value.trim();
 
             if (!to || !message) {
-                alert('׳ ׳ ׳׳׳׳ ׳׳¡׳₪׳¨ ׳˜׳׳₪׳•׳ ׳•׳×׳•׳›׳ ׳”׳•׳“׳¢׳”.');
+                alert('נא למלא מספר טלפון ותוכן הודעה.');
                 return;
             }
 
@@ -1953,20 +1893,20 @@ curl -X POST http://localhost:3000/api/send-message \
                 const data = await res.json();
 
                 if (res.ok) {
-                    alert('ג… ׳”׳•׳“׳¢׳” ׳ ׳©׳׳—׳” ׳‘׳”׳¦׳׳—׳”!');
+                    alert('✅ הודעה נשלחה בהצלחה!');
                     document.getElementById('manual-msg-content').value = '';
                 } else {
-                    alert('ג ׳©׳’׳™׳׳”: ' + (data.error || '׳©׳’׳™׳׳” ׳׳ ׳™׳“׳•׳¢׳”'));
+                    alert('❌ שגיאה: ' + (data.error || 'שגיאה לא ידועה'));
                 }
             } catch (err) {
-                alert('ג ׳©׳’׳™׳׳” ׳‘׳×׳§׳©׳•׳¨׳×: ' + err.message);
+                alert('❌ שגיאה בתקשורת: ' + err.message);
             }
         }
 
         function copyApiExample() {
             const code = document.getElementById('api-code-block').innerText;
             navigator.clipboard.writeText(code).then(() => {
-                alert('׳”׳§׳•׳“ ׳”׳•׳¢׳×׳§ ׳׳׳•׳—!');
+                alert('הקוד הועתק ללוח!');
             });
         }
 
@@ -1976,11 +1916,11 @@ curl -X POST http://localhost:3000/api/send-message \
 
             if (s.status === 'QR_RECEIVED' && s.qr) {
                 qrcodeEl.innerHTML = `<img src="${s.qr}">`;
-                qrMsg.innerText = '׳¡׳¨׳•׳§ ׳§׳•׳“ QR ׳׳—׳™׳‘׳•׳¨:';
+                qrMsg.innerText = 'סרוק קוד QR לחיבור:';
                 loader.style.display = 'none';
             } else if (s.status === 'READY') {
                 qrcodeEl.innerHTML = '<div style="color: var(--primary); filter: drop-shadow(0 0 10px var(--primary-glow));"><i data-lucide="smartphone" style="width: 80px; height: 80px;"></i></div>';
-                qrMsg.innerText = 'ג“ ׳׳—׳•׳‘׳¨ ׳•׳₪׳¢׳™׳';
+                qrMsg.innerText = '✓ מחובר ופעיל';
                 loader.style.display = 'none';
             } else if (s.status === 'AUTHENTICATED') {
                 qrcodeEl.innerHTML = '';
@@ -1992,14 +1932,14 @@ curl -X POST http://localhost:3000/api/send-message \
                 loader.style.display = 'block';
             } else {
                 qrcodeEl.innerHTML = '';
-                qrMsg.innerText = '׳׳׳×׳™׳ ׳׳¢׳“׳›׳•׳ ׳¡׳˜׳˜׳•׳¡...';
+                qrMsg.innerText = 'ממתין לעדכון סטטוס...';
                 loader.style.display = 'block';
             }
             lucide.createIcons();
         }
 
         async function promptAddSession() {
-            const id = prompt('׳”׳›׳ ׳¡ ׳©׳ ׳׳—׳©׳‘׳•׳ ׳”׳—׳“׳© (׳׳ ׳’׳׳™׳×, ׳׳¡׳₪׳¨׳™׳, - ׳׳• _ ׳‘׳׳‘׳“):\n\n׳“׳•׳’׳׳׳•׳×: bot-private, account2, my_bot');
+            const id = prompt('הכנס שם לחשבון החדש (אנגלית, מספרים, - או _ בלבד):\n\nדוגמאות: bot-private, account2, my_bot');
             if (id) {
                 const res = await fetch('/api/sessions', {
                     method: 'POST',
@@ -2008,10 +1948,10 @@ curl -X POST http://localhost:3000/api/send-message \
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    alert(`׳—׳©׳‘׳•׳ ׳ ׳•׳¡׳£ ׳‘׳”׳¦׳׳—׳”!\n׳©׳ ׳”׳—׳©׳‘׳•׳: ${data.id}`);
+                    alert(`חשבון נוסף בהצלחה!\nשם החשבון: ${data.id}`);
                 } else {
                     const err = await res.json();
-                    alert('׳©׳’׳™׳׳”: ' + err.error);
+                    alert('שגיאה: ' + err.error);
                 }
             }
         }
@@ -2019,10 +1959,10 @@ curl -X POST http://localhost:3000/api/send-message \
         async function deleteSession(id) {
             if (!id) return;
 
-            const confirm1 = confirm(`׳”׳׳ ׳׳×׳” ׳‘׳˜׳•׳— ׳©׳‘׳¨׳¦׳•׳ ׳ ׳׳׳—׳•׳§ ׳׳× ׳”׳—׳©׳‘׳•׳ "${id}"?`);
+            const confirm1 = confirm(`האם אתה בטוח שברצונך למחוק את החשבון "${id}"?`);
             if (!confirm1) return;
 
-            const confirm2 = confirm(`ג ן¸ ׳׳–׳”׳¨׳” ׳—׳©׳•׳‘׳”!\n\n׳”׳₪׳¢׳•׳׳” ׳×׳׳—׳§ ׳׳× ׳›׳ ׳”׳”׳™׳¡׳˜׳•׳¨׳™׳”, ׳”׳”׳’׳“׳¨׳•׳× ׳•׳”׳’׳™׳©׳” ׳׳—׳©׳‘׳•׳ "${id}" ׳׳¦׳׳™׳×׳•׳×.\n\n׳”׳׳ ׳׳”׳׳©׳™׳?`);
+            const confirm2 = confirm(`⚠️ אזהרה חשובה!\n\nהפעולה תמחק את כל ההיסטוריה, ההגדרות והגישה לחשבון "${id}" לצמיתות.\n\nהאם להמשיך?`);
             if (!confirm2) return;
 
             const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
@@ -2032,16 +1972,16 @@ curl -X POST http://localhost:3000/api/send-message \
                 renderSessionList();
                 if (selectedSessionId) selectSession(selectedSessionId);
                 else {
-                    statusText.innerText = '׳‘׳—׳¨ ׳—׳©׳‘׳•׳';
+                    statusText.innerText = 'בחר חשבון';
                     qrcodeEl.innerHTML = '';
-                    qrMsg.innerText = '׳‘׳—׳¨ ׳—׳©׳‘׳•׳ ׳׳”׳×׳₪׳¨׳™׳˜ ׳‘׳¦׳“';
+                    qrMsg.innerText = 'בחר חשבון מהתפריט בצד';
                 }
             }
         }
 
         async function logoutCurrent() {
             if (!selectedSessionId) return;
-            if (confirm('׳׳”׳×׳ ׳×׳§ ׳׳—׳©׳‘׳•׳ ׳–׳”?')) {
+            if (confirm('להתנתק מחשבון זה?')) {
                 await fetch('/api/logout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2052,11 +1992,11 @@ curl -X POST http://localhost:3000/api/send-message \
 
         function translateStatus(s) {
             const map = {
-                'INITIALIZING': '׳׳׳×׳—׳...', 'QR_RECEIVED': '׳׳׳×׳™׳ ׳׳¡׳¨׳™׳§׳”',
-                'AUTHENTICATED': '׳׳—׳•׳‘׳¨', 'READY': '׳₪׳¢׳™׳ ג…',
-                'DISCONNECTED': '׳׳ ׳•׳×׳§', 'AUTH_FAILURE': '׳©׳’׳™׳׳× ׳”׳×׳—׳‘׳¨׳•׳×'
+                'INITIALIZING': 'מאתחל...', 'QR_RECEIVED': 'ממתין לסריקה',
+                'AUTHENTICATED': 'מחובר', 'READY': 'פעיל ✅',
+                'DISCONNECTED': 'מנותק', 'AUTH_FAILURE': 'שגיאת התחברות'
             };
-            if (s.startsWith('LOADING')) return '׳˜׳•׳¢׳...';
+            if (s.startsWith('LOADING')) return 'טוען...';
             return map[s] || s;
         }
 
@@ -2069,8 +2009,8 @@ curl -X POST http://localhost:3000/api/send-message \
                 data: {
                     labels: [],
                     datasets: [
-                        { label: '׳”׳×׳§׳‘׳׳•', data: [], borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true, tension: 0.4 },
-                        { label: '׳׳¢׳ ׳”', data: [], borderColor: '#10b981', fill: false, tension: 0.4 }
+                        { label: 'התקבלו', data: [], borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true, tension: 0.4 },
+                        { label: 'מענה', data: [], borderColor: '#10b981', fill: false, tension: 0.4 }
                     ]
                 },
                 options: {
@@ -2138,7 +2078,7 @@ curl -X POST http://localhost:3000/api/send-message \
             }
             if (activeSessEl) {
                 const s = sessions[selectedSessionId];
-                activeSessEl.innerText = s ? translateStatus(s.status) : '׳׳ ׳™׳“׳•׳¢';
+                activeSessEl.innerText = s ? translateStatus(s.status) : 'לא ידוע';
                 // Color code status
                 activeSessEl.style.color = (s && (s.status === 'READY' || s.status === 'AUTHENTICATED')) ? 'var(--primary)' : '#94a3b8';
             }
@@ -2180,7 +2120,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="4" style="padding: 22px; text-align: center; color: var(--text-muted);">
-                            ׳׳™׳ ׳ ׳×׳•׳ ׳™ ׳”׳×׳¨׳¢׳•׳× ׳׳”׳¦׳’׳”
+                            אין נתוני התרעות להצגה
                         </td>
                     </tr>
                 `;
@@ -2212,7 +2152,7 @@ curl -X POST http://localhost:3000/api/send-message \
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="4" style="padding: 22px; text-align: center; color: var(--danger);">
-                                ׳©׳’׳™׳׳” ׳‘׳˜׳¢׳™׳ ׳× ׳ ׳×׳•׳ ׳™ ׳”׳×׳¨׳¢׳•׳×: ${escapeHtml(err.message)}
+                                שגיאה בטעינת נתוני התרעות: ${escapeHtml(err.message)}
                             </td>
                         </tr>
                     `;
@@ -2226,7 +2166,7 @@ curl -X POST http://localhost:3000/api/send-message \
             if (!selectedSessionId) return;
 
             const tbody = document.getElementById('contacts-table-body');
-            tbody.innerHTML = '<tr><td colspan="4" style="padding: 30px; text-align: center;"><div class="loader" style="margin: 0 auto; width: 24px; height: 24px;"></div> <p style="margin-top: 10px;">׳˜׳•׳¢׳ ׳׳ ׳©׳™ ׳§׳©׳¨ (׳–׳” ׳¢׳©׳•׳™ ׳׳§׳—׳× ׳¨׳’׳¢ ׳׳ ׳™׳© ׳”׳¨׳‘׳”)...</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="padding: 30px; text-align: center;"><div class="loader" style="margin: 0 auto; width: 24px; height: 24px;"></div> <p style="margin-top: 10px;">טוען אנשי קשר (זה עשוי לקחת רגע אם יש הרבה)...</p></td></tr>';
 
             try {
                 const res = await fetch(`/api/contacts?sessionId=${selectedSessionId}`);
@@ -2239,10 +2179,10 @@ curl -X POST http://localhost:3000/api/send-message \
                         console.warn('Contacts loaded from chats fallback');
                     }
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--danger);">׳©׳’׳™׳׳”: ${data.error || '׳©׳’׳™׳׳” ׳׳ ׳™׳“׳•׳¢׳”'}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--danger);">שגיאה: ${data.error || 'שגיאה לא ידועה'}</td></tr>`;
                 }
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--danger);">׳©׳’׳™׳׳” ׳‘׳—׳™׳‘׳•׳¨ ׳׳©׳¨׳×: ${err.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--danger);">שגיאה בחיבור לשרת: ${err.message}</td></tr>`;
             }
         }
 
@@ -2251,23 +2191,23 @@ curl -X POST http://localhost:3000/api/send-message \
             if (!tbody) return;
 
             if (contacts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--text-muted);">׳׳ ׳ ׳׳¦׳׳• ׳׳ ׳©׳™ ׳§׳©׳¨</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="padding: 30px; text-align: center; color: var(--text-muted);">לא נמצאו אנשי קשר</td></tr>';
                 return;
             }
 
             tbody.innerHTML = contacts.map(c => `
                 <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
-                    <td style="padding: 12px; font-weight: 600; cursor: ${c.isGroup ? 'pointer' : 'default'}; color: ${c.isGroup ? 'var(--primary)' : 'inherit'};" onclick="${c.isGroup ? `showGroupMembers('${c.id}', '${(c.name || '׳׳׳ ׳©׳').replace(/'/g, "\\'")}')` : ''}">${c.name || '<span style="color: var(--text-muted);">׳׳׳ ׳©׳</span>'}</td>
+                    <td style="padding: 12px; font-weight: 600; cursor: ${c.isGroup ? 'pointer' : 'default'}; color: ${c.isGroup ? 'var(--primary)' : 'inherit'};" onclick="${c.isGroup ? `showGroupMembers('${c.id}', '${(c.name || 'ללא שם').replace(/'/g, "\\'")}')` : ''}">${c.name || '<span style="color: var(--text-muted);">ללא שם</span>'}</td>
                     <td style="padding: 12px; direction: ltr; color: var(--primary); font-family: 'Rajdhani'; font-weight: 600;">${c.number}</td>
                     <td style="padding: 12px;">
-                        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: ${c.isGroup ? 'rgba(6, 182, 212, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${c.isGroup ? 'var(--primary)' : '#4ade80'}; border: 1px solid ${c.isGroup ? 'rgba(6, 182, 212, 0.2)' : 'rgba(34, 197, 94, 0.2)'}; display: inline-flex; align-items: center; gap: 4px; cursor: ${c.isGroup ? 'pointer' : 'default'}" onclick="${c.isGroup ? `showGroupMembers('${c.id}', '${(c.name || '׳׳׳ ׳©׳').replace(/'/g, "\\'")}')` : ''}">
+                        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: ${c.isGroup ? 'rgba(6, 182, 212, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${c.isGroup ? 'var(--primary)' : '#4ade80'}; border: 1px solid ${c.isGroup ? 'rgba(6, 182, 212, 0.2)' : 'rgba(34, 197, 94, 0.2)'}; display: inline-flex; align-items: center; gap: 4px; cursor: ${c.isGroup ? 'pointer' : 'default'}" onclick="${c.isGroup ? `showGroupMembers('${c.id}', '${(c.name || 'ללא שם').replace(/'/g, "\\'")}')` : ''}">
                             ${c.isGroup ?
-                    `׳§׳‘׳•׳¦׳” <span style="font-size:0.65em; opacity:0.8; margin-right:2px;">(${c.participantCount || '?'})</span>` :
-                    '׳₪׳¨׳˜׳™'}
+                    `קבוצה <span style="font-size:0.65em; opacity:0.8; margin-right:2px;">(${c.participantCount || '?'})</span>` :
+                    'פרטי'}
                         </span>
                     </td>
                     <td style="padding: 12px;">
-                        <button onclick="quickMessage('${c.number}')" class="btn-action" title="׳©׳׳— ׳”׳•׳“׳¢׳” ׳׳”׳™׳¨׳”">
+                        <button onclick="quickMessage('${c.number}')" class="btn-action" title="שלח הודעה מהירה">
                             <i data-lucide="message-circle" style="width: 14px;"></i>
                         </button>
                     </td>
@@ -2322,7 +2262,7 @@ curl -X POST http://localhost:3000/api/send-message \
             const iconEl = document.getElementById(`sort-icon-${currentSortColumn}`);
             if (iconEl) {
                 // Using simple text arrows for simplicity, or could use Lucide icons
-                iconEl.innerHTML = currentSortDirection === 'asc' ? 'ג–²' : 'ג–¼';
+                iconEl.innerHTML = currentSortDirection === 'asc' ? '▲' : '▼';
                 iconEl.style.fontSize = '0.7em';
                 iconEl.style.opacity = '0.7';
             }
@@ -2382,7 +2322,7 @@ curl -X POST http://localhost:3000/api/send-message \
 
         function exportContactsCSV() {
             if (currentContacts.length === 0) {
-                alert('׳׳ ׳ ׳˜׳¢׳ ׳׳× ׳¨׳©׳™׳׳× ׳׳ ׳©׳™ ׳”׳§׳©׳¨ ׳×׳—׳™׳׳”');
+                alert('אנא טען את רשימת אנשי הקשר תחילה');
                 return;
             }
 
@@ -2411,7 +2351,7 @@ curl -X POST http://localhost:3000/api/send-message \
 
         function exportGroupMembersCSV(groupName) {
             if (!window.lastGroupMembers || window.lastGroupMembers.length === 0) {
-                alert('׳׳™׳ ׳ ׳×׳•׳ ׳™׳ ׳׳™׳™׳¦׳•׳');
+                alert('אין נתונים לייצוא');
                 return;
             }
 
@@ -2431,7 +2371,7 @@ curl -X POST http://localhost:3000/api/send-message \
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            link.setAttribute('download', `members_${groupName.replace(/[^׳-׳×a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('download', `members_${groupName.replace(/[^א-תa-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
@@ -2466,7 +2406,7 @@ curl -X POST http://localhost:3000/api/send-message \
         function clearLogs() { logsEl.innerHTML = ''; }
 
         // Rules handling
-        const MATCH_TYPES = { 'contains': '׳׳›׳™׳', 'equals': '׳׳“׳•׳™׳§', 'startsWith': '׳׳×׳—׳™׳ ׳‘..', 'endsWith': '׳׳¡׳×׳™׳™׳ ׳‘..', 'regex': 'Regex' };
+        const MATCH_TYPES = { 'contains': 'מכיל', 'equals': 'מדויק', 'startsWith': 'מתחיל ב..', 'endsWith': 'מסתיים ב..', 'regex': 'Regex' };
 
         async function loadConfig() {
             if (!selectedSessionId) return;
@@ -2512,7 +2452,7 @@ curl -X POST http://localhost:3000/api/send-message \
                     ? 'background: rgba(6, 182, 212, 0.15); color: var(--primary); border: 1px solid rgba(6, 182, 212, 0.3);'
                     : 'background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid transparent;';
 
-                const label = { 'private': '׳₪׳¨׳˜׳™', 'group': '׳§׳‘׳•׳¦׳•׳×', 'channel': '׳¢׳¨׳•׳¥' }[type];
+                const label = { 'private': 'פרטי', 'group': 'קבוצות', 'channel': 'ערוץ' }[type];
 
                 return `<div class="tag chat-type-selector ${activeClass}" 
                              data-value="${type}" 
@@ -2529,26 +2469,26 @@ curl -X POST http://localhost:3000/api/send-message \
                 
                 <div style="margin-bottom:15px;">
                     <span style="font-size:0.85rem; font-weight:700; color: var(--primary); font-family: 'Rajdhani', sans-serif; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="settings" style="width: 14px;"></i> ׳×׳™׳׳•׳¨ ׳”׳—׳•׳§ (׳׳•׳₪׳¦׳™׳•׳ ׳׳™):
+                        <i data-lucide="settings" style="width: 14px;"></i> תיאור החוק (אופציונלי):
                     </span>
-                    <input type="text" class="rule-description" placeholder="׳׳׳©׳: ׳׳¢׳ ׳” ׳׳•׳˜׳•׳׳˜׳™ ׳׳©׳׳׳•׳× ׳ ׳₪׳•׳¦׳•׳×" value="${description}" style="margin-top: 8px;">
+                    <input type="text" class="rule-description" placeholder="למשל: מענה אוטומטי לשאלות נפוצות" value="${description}" style="margin-top: 8px;">
                 </div>
 
                 <div style="margin-bottom:15px;">
                     <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="target" style="width:14px; color: var(--primary);"></i> ׳׳™׳׳•׳× ׳׳₪׳×׳—:
+                        <i data-lucide="target" style="width:14px; color: var(--primary);"></i> מילות מפתח:
                     </span>
                     <div class="tags-container triggers-container" style="margin-top: 8px;">
-                        ${triggers.map(t => `<span class="tag" data-value="${t.value}" data-type="${t.type}">${MATCH_TYPES[t.type]} ${t.value} <i onclick="this.parentElement.remove()">ג•</i></span>`).join('')}
+                        ${triggers.map(t => `<span class="tag" data-value="${t.value}" data-type="${t.type}">${MATCH_TYPES[t.type]} ${t.value} <i onclick="this.parentElement.remove()">✕</i></span>`).join('')}
                         <div style="display: flex; gap: 8px; flex-grow: 1; min-width: 250px;">
                             <select class="tag-select" style="width: auto; background: rgba(255,255,255,0.05); padding: 5px 10px; font-size: 0.8rem;">
-                                <option value="contains">׳׳›׳™׳</option>
-                                <option value="equals">׳׳“׳•׳™׳§</option>
-                                <option value="startsWith">׳׳×׳—׳™׳ ׳‘..</option>
-                                <option value="endsWith">׳׳¡׳×׳™׳™׳ ׳‘..</option>
+                                <option value="contains">מכיל</option>
+                                <option value="equals">מדויק</option>
+                                <option value="startsWith">מתחיל ב..</option>
+                                <option value="endsWith">מסתיים ב..</option>
                                 <option value="regex">Regex</option>
                             </select>
-                            <input type="text" placeholder="׳”׳•׳¡׳£ ׳׳™׳׳”.." style="flex-grow:1; border: none; background: transparent; padding: 5px;" onkeydown="addTriggerTag(event, this)">
+                            <input type="text" placeholder="הוסף מילה.." style="flex-grow:1; border: none; background: transparent; padding: 5px;" onkeydown="addTriggerTag(event, this)">
                         </div>
                     </div>
                 </div>
@@ -2556,23 +2496,23 @@ curl -X POST http://localhost:3000/api/send-message \
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div>
                         <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
-                            <i data-lucide="clock" style="width:14px; color: var(--primary);"></i> ׳׳×׳™ ׳׳”׳₪׳¢׳™׳?
+                            <i data-lucide="clock" style="width:14px; color: var(--primary);"></i> מתי להפעיל?
                         </span>
                         <select class="rule-trigger-on-select" style="margin-top: 8px;">
-                            <option value="incoming" ${triggerOn === 'incoming' ? 'selected' : ''}>׳”׳•׳“׳¢׳” ׳ ׳›׳ ׳¡׳×</option>
-                            <option value="outgoing" ${triggerOn === 'outgoing' ? 'selected' : ''}>׳”׳•׳“׳¢׳” ׳™׳•׳¦׳׳×</option>
-                            <option value="both" ${triggerOn === 'both' ? 'selected' : ''}>׳©׳×׳™׳”׳</option>
+                            <option value="incoming" ${triggerOn === 'incoming' ? 'selected' : ''}>הודעה נכנסת</option>
+                            <option value="outgoing" ${triggerOn === 'outgoing' ? 'selected' : ''}>הודעה יוצאת</option>
+                            <option value="both" ${triggerOn === 'both' ? 'selected' : ''}>שתיהן</option>
                         </select>
                     </div>
                     <div>
                         <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
-                            <i data-lucide="map-pin" style="width:14px; color: var(--primary);"></i> ׳׳™׳₪׳” ׳™׳₪׳¢׳?
+                            <i data-lucide="map-pin" style="width:14px; color: var(--primary);"></i> איפה יפעל?
                         </span>
                         <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" class="btn-quick-filter" onclick="setQuickFilter(this, ['group'])">׳¨׳§ ׳§׳‘׳•׳¦׳•׳×</button>
-                                <button type="button" class="btn-quick-filter" onclick="setQuickFilter(this, ['private'])">׳¨׳§ ׳₪׳¨׳˜׳™</button>
-                                <button type="button" class="btn-quick-filter" onclick="setQuickFilter(this, ['group', 'private', 'channel'])">׳”׳›׳</button>
+                                <button type="button" class="btn-quick-filter" onclick="setQuickFilter(this, ['group'])">רק קבוצות</button>
+                                <button type="button" class="btn-quick-filter" onclick="setQuickFilter(this, ['private'])">רק פרטי</button>
+                                <button type="button" class="btn-quick-filter" onclick="setQuickFilter(this, ['group', 'private', 'channel'])">הכל</button>
                             </div>
                             <div class="chat-types-container" style="display: flex; gap: 8px;">
                                 ${typesHtml}
@@ -2583,39 +2523,39 @@ curl -X POST http://localhost:3000/api/send-message \
 
                 <div style="margin-bottom:15px;">
                     <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="unlock" style="width:14px; color: var(--primary);"></i> ׳׳¡׳₪׳¨׳™׳ ׳׳•׳¨׳©׳™׳ (׳׳•׳₪׳¦׳™׳•׳ ׳׳™):
+                        <i data-lucide="unlock" style="width:14px; color: var(--primary);"></i> מספרים מורשים (אופציונלי):
                     </span>
                     <div class="tags-container sources-container" style="margin-top: 8px;">
-                        ${sources.map(s => `<span class="tag source" data-value="${s}">${s} <i onclick="this.parentElement.remove()">ג•</i></span>`).join('')}
-                        <input type="text" placeholder="׳”׳•׳¡׳£ ׳׳¡׳₪׳¨ (Enter)" style="flex-grow:1; border: none; background: transparent; padding: 5px;" onkeydown="addSourceTag(event, this)">
+                        ${sources.map(s => `<span class="tag source" data-value="${s}">${s} <i onclick="this.parentElement.remove()">✕</i></span>`).join('')}
+                        <input type="text" placeholder="הוסף מספר (Enter)" style="flex-grow:1; border: none; background: transparent; padding: 5px;" onkeydown="addSourceTag(event, this)">
                     </div>
                 </div>
 
                 <div style="margin-bottom:15px;">
                     <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="message-square" style="width:14px; color: var(--primary);"></i> ׳×׳©׳•׳‘׳” ׳׳•׳˜׳•׳׳˜׳™׳×:
+                        <i data-lucide="message-square" style="width:14px; color: var(--primary);"></i> תשובה אוטומטית:
                     </span>
-                    <textarea rows="3" class="reply-textarea" style="margin-top: 8px;" placeholder="׳”׳›׳ ׳¡ ׳׳× ׳×׳•׳›׳ ׳”׳×׳©׳•׳‘׳” ׳›׳׳...">${reply}</textarea>
+                    <textarea rows="3" class="reply-textarea" style="margin-top: 8px;" placeholder="הכנס את תוכן התשובה כאן...">${reply}</textarea>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
                     <div>
                         <span style="font-size:0.75rem; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            <i data-lucide="file-input" style="width:12px;"></i> ׳׳¦׳‘ ׳׳§׳•׳¨ (׳׳•׳₪׳¦׳™׳•׳ ׳׳™):
+                            <i data-lucide="file-input" style="width:12px;"></i> מצב מקור (אופציונלי):
                         </span>
-                        <input type="text" class="rule-context" placeholder="׳׳׳©׳: menu" value="${context}" style="margin-top:5px;">
+                        <input type="text" class="rule-context" placeholder="למשל: menu" value="${context}" style="margin-top:5px;">
                     </div>
                     <div>
                         <span style="font-size:0.75rem; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            <i data-lucide="file-output" style="width:12px;"></i> ׳׳¦׳‘ ׳™׳¢׳“ (׳׳•׳₪׳¦׳™׳•׳ ׳׳™):
+                            <i data-lucide="file-output" style="width:12px;"></i> מצב יעד (אופציונלי):
                         </span>
-                        <input type="text" class="next-state" placeholder="׳׳׳©׳: orders" value="${nextState}" style="margin-top:5px;">
+                        <input type="text" class="next-state" placeholder="למשל: orders" value="${nextState}" style="margin-top:5px;">
                     </div>
                 </div>
 
                 <div>
                     <span style="font-size:0.85rem; font-weight:700; font-family: 'Rajdhani', sans-serif; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="link" style="width:14px; color: var(--primary);"></i> WEBHOOK URL (׳׳•׳₪׳¦׳™׳•׳ ׳׳™):
+                        <i data-lucide="link" style="width:14px; color: var(--primary);"></i> WEBHOOK URL (אופציונלי):
                     </span>
                     <input type="text" class="webhook-url" placeholder="https://your-api.com/webhook" value="${webhook}" style="margin-top: 8px;">
                 </div>
@@ -2634,7 +2574,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 tag.className = 'tag';
                 tag.dataset.value = val;
                 tag.dataset.type = type;
-                tag.innerHTML = `${MATCH_TYPES[type]} ${val} <i onclick="this.parentElement.remove()">ג•</i>`;
+                tag.innerHTML = `${MATCH_TYPES[type]} ${val} <i onclick="this.parentElement.remove()">✕</i>`;
                 container.insertBefore(tag, input.parentElement);
                 input.value = '';
                 e.preventDefault();
@@ -2649,7 +2589,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 const tag = document.createElement('span');
                 tag.className = 'tag source';
                 tag.dataset.value = val;
-                tag.innerHTML = `${val} <i onclick="this.parentElement.remove()">ג•</i>`;
+                tag.innerHTML = `${val} <i onclick="this.parentElement.remove()">✕</i>`;
                 container.insertBefore(tag, input);
                 input.value = '';
                 e.preventDefault();
@@ -2696,7 +2636,7 @@ curl -X POST http://localhost:3000/api/send-message \
 
         async function saveAllConfig() {
             if (!selectedSessionId) {
-                alert('׳׳ ׳ ׳‘׳—׳¨ ׳—׳©׳‘׳•׳ ׳×׳—׳™׳׳”');
+                alert('אנא בחר חשבון תחילה');
                 return;
             }
 
@@ -2738,7 +2678,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ autoReplies: newReplies, forwarding: [], scheduledMessages: [] })
             });
-            if (res.ok) alert(`׳”׳’׳“׳¨׳•׳× ׳ ׳©׳׳¨׳• ׳¢׳‘׳•׳¨ ${selectedSessionId}!`);
+            if (res.ok) alert(`הגדרות נשמרו עבור ${selectedSessionId}!`);
         }
 
         initChart();
