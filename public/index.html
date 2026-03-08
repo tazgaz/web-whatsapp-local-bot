@@ -1130,7 +1130,8 @@ curl -X POST http://localhost:3000/api/send-message \
                             <label
                                 style="display:block; margin-bottom:8px; font-weight:700; font-family: 'Rajdhani', sans-serif;">מזהה
                                 קבוצה:</label>
-                            <input type="text" id="group-id-input" placeholder="120363123456789012@g.us">
+                            <input type="text" id="group-id-input" placeholder="120363123456789012@g.us"
+                                onchange="loadGroupWelcomeMessage()">
                             <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">
                                 💡 טיפ: תוכל למצוא את מזהה הקבוצה ביומן הפעילות כאשר מתקבלת הודעה מהקבוצה
                             </p>
@@ -1145,6 +1146,27 @@ curl -X POST http://localhost:3000/api/send-message \
                                 style="display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(34, 197, 94, 0.8);">
                                 <i data-lucide="unlock" style="width: 16px;"></i> פתח קבוצה
                             </button>
+                        </div>
+
+                        <div style="margin-top: 18px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: rgba(0,0,0,0.15);">
+                            <div style="display:flex; align-items:center; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
+                                <h3 class="rajdhani" style="font-size: 0.95rem; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="message-circle" style="width: 15px; color: var(--primary);"></i> Welcome DM for Link Join
+                                </h3>
+                                <label style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--text); cursor:pointer;">
+                                    <input type="checkbox" id="group-welcome-enabled">
+                                    Enabled
+                                </label>
+                            </div>
+                            <textarea id="group-welcome-message" rows="3" placeholder="Private welcome message sent when a user joins this group via invite link..."></textarea>
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <button onclick="loadGroupWelcomeMessage()" class="btn-quick-filter">
+                                    <i data-lucide="download" style="width: 12px; margin-left: 6px;"></i> Load Message
+                                </button>
+                                <button onclick="saveGroupWelcomeMessage()" class="btn-primary" style="padding: 8px 12px; font-size: 0.8rem;">
+                                    <i data-lucide="save" style="width: 14px; margin-left: 6px;"></i> Save Message
+                                </button>
+                            </div>
                         </div>
 
                         <div style="margin-top: 25px; border-top: 1px solid var(--border); padding-top: 20px;">
@@ -1458,6 +1480,10 @@ curl -X POST http://localhost:3000/api/send-message \
             updateDashboardCharts(); // Redraw dashboard for the new session
             loadMissileAlertStats(); // Refresh missile alert dashboard table
             loadManagedGroups(); // Load managed groups
+            const welcomeEnabled = document.getElementById('group-welcome-enabled');
+            const welcomeMessage = document.getElementById('group-welcome-message');
+            if (welcomeEnabled) welcomeEnabled.checked = false;
+            if (welcomeMessage) welcomeMessage.value = '';
 
             // Reload contacts if we are currently on the contacts tab
             if (document.getElementById('contacts-section').classList.contains('active')) {
@@ -1527,6 +1553,7 @@ curl -X POST http://localhost:3000/api/send-message \
                                 if (e.target.classList.contains('group-participants') || e.target.closest('.btn-leave-group')) return;
 
                                 document.getElementById('group-id-input').value = group.id;
+                                loadGroupWelcomeMessage(group.id);
                                 div.style.background = 'rgba(6, 182, 212, 0.2)';
                                 setTimeout(() => div.style.background = '', 300);
                             };
@@ -1556,6 +1583,87 @@ curl -X POST http://localhost:3000/api/send-message \
                 container.innerHTML = `<p style="font-size: 0.8rem; color: var(--danger); text-align: center; padding: 10px;">שגיאת תקשורת עם השרת</p>`;
             }
             lucide.createIcons();
+        }
+
+        function normalizeGroupIdForUI(groupId) {
+            const raw = (groupId || '').trim();
+            if (!raw) return '';
+            return raw.includes('@') ? raw : `${raw}@g.us`;
+        }
+
+        async function loadGroupWelcomeMessage(explicitGroupId = null) {
+            if (!selectedSessionId) return;
+
+            const inputEl = document.getElementById('group-id-input');
+            const messageEl = document.getElementById('group-welcome-message');
+            const enabledEl = document.getElementById('group-welcome-enabled');
+            if (!inputEl || !messageEl || !enabledEl) return;
+
+            const normalizedGroupId = normalizeGroupIdForUI(explicitGroupId || inputEl.value);
+            if (!normalizedGroupId) return;
+            inputEl.value = normalizedGroupId;
+
+            try {
+                const res = await fetch(`/api/group/welcome-message?sessionId=${encodeURIComponent(selectedSessionId)}&groupId=${encodeURIComponent(normalizedGroupId)}&t=${Date.now()}`);
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Failed to load message');
+                }
+
+                enabledEl.checked = !!data.enabled;
+                messageEl.value = data.message || '';
+            } catch (err) {
+                console.error('Failed loading group welcome message:', err);
+                enabledEl.checked = false;
+                messageEl.value = '';
+            }
+        }
+
+        async function saveGroupWelcomeMessage() {
+            if (!selectedSessionId) {
+                alert('אנא בחר חשבון תחילה');
+                return;
+            }
+
+            const inputEl = document.getElementById('group-id-input');
+            const messageEl = document.getElementById('group-welcome-message');
+            const enabledEl = document.getElementById('group-welcome-enabled');
+            if (!inputEl || !messageEl || !enabledEl) return;
+
+            const normalizedGroupId = normalizeGroupIdForUI(inputEl.value);
+            if (!normalizedGroupId) {
+                alert('אנא הכנס מזהה קבוצה');
+                return;
+            }
+
+            const payload = {
+                sessionId: selectedSessionId,
+                groupId: normalizedGroupId,
+                enabled: enabledEl.checked,
+                message: messageEl.value || ''
+            };
+
+            try {
+                const res = await fetch('/api/group/welcome-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert('שגיאה: ' + (data.error || 'Failed to save message'));
+                    return;
+                }
+
+                inputEl.value = normalizedGroupId;
+                enabledEl.checked = !!data.enabled;
+                messageEl.value = data.message || '';
+                alert('הודעת ברוכים הבאים נשמרה בהצלחה');
+            } catch (err) {
+                alert('שגיאת תקשורת: ' + err.message);
+            }
         }
 
         async function lockGroup() {
@@ -2703,3 +2811,4 @@ curl -X POST http://localhost:3000/api/send-message \
 </body>
 
 </html>
+

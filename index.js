@@ -122,6 +122,10 @@ const STATS_FILE = './stats.json';
 if (!fs.existsSync(STATS_FILE)) {
     fs.writeFileSync(STATS_FILE, JSON.stringify({ sessions: {} }, null, 2));
 }
+const GROUP_WELCOME_MESSAGES_FILE = './group_welcome_messages.json';
+if (!fs.existsSync(GROUP_WELCOME_MESSAGES_FILE)) {
+    fs.writeFileSync(GROUP_WELCOME_MESSAGES_FILE, JSON.stringify({ sessions: {} }, null, 2));
+}
 const MISSILE_ALERTS_FILE = './missile_alerts.json';
 if (!fs.existsSync(MISSILE_ALERTS_FILE)) {
     fs.writeFileSync(MISSILE_ALERTS_FILE, JSON.stringify({ sessions: {} }, null, 2));
@@ -195,6 +199,54 @@ function parseAlertTimestamp(timestamp) {
     const parsed = new Date(timestamp);
     if (Number.isNaN(parsed.getTime())) return null;
     return parsed;
+}
+
+function normalizeGroupId(groupId) {
+    if (typeof groupId !== 'string') return '';
+    const trimmed = groupId.trim();
+    if (!trimmed) return '';
+    return trimmed.includes('@') ? trimmed : `${trimmed}@g.us`;
+}
+
+function getGroupWelcomeMessagesStore() {
+    const store = readJSON(GROUP_WELCOME_MESSAGES_FILE, { sessions: {} });
+    if (!store.sessions) store.sessions = {};
+    return store;
+}
+
+function getGroupWelcomeMessage(sessionId, groupId) {
+    const sid = sessionId || 'default';
+    const normalizedGroupId = normalizeGroupId(groupId);
+    if (!normalizedGroupId) return { enabled: false, message: '' };
+
+    const store = getGroupWelcomeMessagesStore();
+    const sessionData = store.sessions[sid] || {};
+    const groups = sessionData.groups || {};
+    const settings = groups[normalizedGroupId] || {};
+
+    return {
+        enabled: !!settings.enabled,
+        message: typeof settings.message === 'string' ? settings.message : ''
+    };
+}
+
+function setGroupWelcomeMessage(sessionId, groupId, payload = {}) {
+    const sid = sessionId || 'default';
+    const normalizedGroupId = normalizeGroupId(groupId);
+    if (!normalizedGroupId) return false;
+
+    const store = getGroupWelcomeMessagesStore();
+    if (!store.sessions[sid]) store.sessions[sid] = {};
+    if (!store.sessions[sid].groups) store.sessions[sid].groups = {};
+
+    store.sessions[sid].groups[normalizedGroupId] = {
+        enabled: !!payload.enabled,
+        message: typeof payload.message === 'string' ? payload.message : '',
+        updatedAt: new Date().toISOString()
+    };
+
+    writeJSON(GROUP_WELCOME_MESSAGES_FILE, store);
+    return true;
 }
 
 function recordMissileAlert(sessionId, city, timestamp, extra = {}) {
@@ -507,6 +559,40 @@ function startSession(sessionId) {
     client.on('auth_failure', (msg) => {
         logToUI(sessionId, `ג— ׳©׳’׳™׳׳× ׳”׳×׳—׳‘׳¨׳•׳×: ${msg}`);
         updateSessionStatus(sessionId, 'AUTH_FAILURE');
+    });
+
+    client.on('group_join', async (notification) => {
+        try {
+            const joinType = notification && notification.type ? String(notification.type) : '';
+            const isInviteJoin = joinType === 'invite' || joinType === 'linked_group_join';
+            if (!isInviteJoin) return;
+
+            const groupId = normalizeGroupId(notification && notification.chatId ? notification.chatId : '');
+            if (!groupId) return;
+
+            const welcome = getGroupWelcomeMessage(sessionId, groupId);
+            if (!welcome.enabled || !welcome.message.trim()) return;
+
+            const recipients = Array.isArray(notification.recipientIds) ? notification.recipientIds : [];
+            if (recipients.length === 0) return;
+
+            const botId = client.info && client.info.wid ? client.info.wid._serialized : '';
+            const uniqueRecipients = [...new Set(recipients)]
+                .filter(rid => typeof rid === 'string' && rid.endsWith('@c.us') && rid !== botId);
+
+            if (uniqueRecipients.length === 0) return;
+
+            for (const recipientId of uniqueRecipients) {
+                try {
+                    await client.sendMessage(recipientId, welcome.message, { sendSeen: false });
+                    logToUI(sessionId, `נ‘‹ Welcome DM sent to ${recipientId} for group ${groupId} (join via link).`);
+                } catch (sendErr) {
+                    logToUI(sessionId, `ג ן¸ Failed sending welcome DM to ${recipientId}: ${sendErr.message}`);
+                }
+            }
+        } catch (err) {
+            logToUI(sessionId, `ג ן¸ group_join handler error: ${err.message}`);
+        }
     });
 
     client.on('message_create', async (msg) => {
@@ -1149,6 +1235,78 @@ app.post('/api/group/unlock', async (req, res) => {
         });
     } catch (err) {
         logToUI(sid, `ג— ׳©׳’׳™׳׳” ׳‘׳₪׳×׳™׳—׳× ׳§׳‘׳•׳¦׳”: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/group/welcome-message', (req, res) => {
+    try {
+        const { groupId, sessionId } = req.query;
+        const sid = sessionId || 'default';
+
+        if (!groupId) {
+            return res.status(400).json({ error: 'Missing groupId' });
+        }
+
+        const normalizedGroupId = normalizeGroupId(groupId);
+        const settings = getGroupWelcomeMessage(sid, normalizedGroupId);
+        res.json({
+            success: true,
+            groupId: normalizedGroupId,
+            enabled: settings.enabled,
+            message: settings.message
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/group/welcome-message', async (req, res) => {
+    const { groupId, message, enabled, sessionId } = req.body || {};
+    const sid = sessionId || 'default';
+
+    if (!groupId) {
+        return res.status(400).json({ error: 'Missing groupId' });
+    }
+
+    const normalizedGroupId = normalizeGroupId(groupId);
+    if (!normalizedGroupId) {
+        return res.status(400).json({ error: 'Invalid groupId' });
+    }
+
+    const session = activeSessions[sid];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: `WhatsApp client "${sid}" is not ready` });
+    }
+
+    try {
+        const chat = await session.client.getChatById(normalizedGroupId);
+        if (!chat.isGroup) {
+            return res.status(400).json({ error: 'The provided ID is not a group' });
+        }
+
+        const botId = session.client.info.wid._serialized;
+        const participant = chat.participants.find(p => p.id._serialized === botId);
+        if (!participant || !participant.isAdmin) {
+            return res.status(403).json({ error: 'Bot is not admin in this group' });
+        }
+
+        const normalizedMessage = typeof message === 'string' ? message.trim() : '';
+        const isEnabled = !!enabled && normalizedMessage.length > 0;
+        setGroupWelcomeMessage(sid, normalizedGroupId, {
+            enabled: isEnabled,
+            message: normalizedMessage
+        });
+
+        logToUI(sid, `נ›  Group welcome message updated for ${chat.name} (${normalizedGroupId}) [enabled=${isEnabled}]`);
+        res.json({
+            success: true,
+            groupId: normalizedGroupId,
+            enabled: isEnabled,
+            message: normalizedMessage
+        });
+    } catch (err) {
+        logToUI(sid, `ג— Error updating group welcome message: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
 });
