@@ -122,7 +122,10 @@ const STATS_FILE = './stats.json';
 if (!fs.existsSync(STATS_FILE)) {
     fs.writeFileSync(STATS_FILE, JSON.stringify({ sessions: {} }, null, 2));
 }
-const GROUP_WELCOME_MESSAGES_FILE = './group_welcome_messages.json';
+const GROUP_WELCOME_MESSAGES_FILE = path.join(__dirname, 'configs', 'group_welcome_messages.json');
+if (!fs.existsSync('./configs')) {
+    fs.mkdirSync('./configs');
+}
 if (!fs.existsSync(GROUP_WELCOME_MESSAGES_FILE)) {
     fs.writeFileSync(GROUP_WELCOME_MESSAGES_FILE, JSON.stringify({ sessions: {} }, null, 2));
 }
@@ -564,21 +567,23 @@ function startSession(sessionId) {
     client.on('group_join', async (notification) => {
         try {
             const joinType = notification && notification.type ? String(notification.type) : '';
-            const isInviteJoin = joinType === 'invite' || joinType === 'linked_group_join';
+            const groupId = normalizeGroupId(notification && notification.chatId ? notification.chatId : '');
+            const recipients = Array.isArray(notification.recipientIds) ? notification.recipientIds : [];
+            logToUI(sessionId, `נ‘¥ group_join event: type=${joinType || 'unknown'} group=${groupId || 'unknown'} recipients=${recipients.length}`);
+
+            const isInviteJoin = joinType === 'invite' || joinType === 'linked_group_join' || joinType === 'add';
             if (!isInviteJoin) return;
 
-            const groupId = normalizeGroupId(notification && notification.chatId ? notification.chatId : '');
             if (!groupId) return;
 
             const welcome = getGroupWelcomeMessage(sessionId, groupId);
             if (!welcome.enabled || !welcome.message.trim()) return;
 
-            const recipients = Array.isArray(notification.recipientIds) ? notification.recipientIds : [];
             if (recipients.length === 0) return;
 
             const botId = client.info && client.info.wid ? client.info.wid._serialized : '';
             const uniqueRecipients = [...new Set(recipients)]
-                .filter(rid => typeof rid === 'string' && rid.endsWith('@c.us') && rid !== botId);
+                .filter(rid => typeof rid === 'string' && !rid.endsWith('@g.us') && rid !== botId);
 
             if (uniqueRecipients.length === 0) return;
 
@@ -841,7 +846,7 @@ app.get('/api/config', (req, res) => {
             fs.mkdirSync('./configs');
         }
 
-        const config = readJSON(configPath, { autoReplies: [], forwarding: [], scheduledMessages: [] });
+        const config = readJSON(configPath, { autoReplies: [], forwarding: [], scheduledMessages: [], groupMessageRotations: [] });
         res.json(config);
     } catch (err) {
         res.status(500).json({ error: 'Failed to read config' });
@@ -858,12 +863,20 @@ app.post('/api/config', (req, res) => {
             fs.mkdirSync('./configs');
         }
 
+        const existingConfig = readJSON(configPath, { autoReplies: [], forwarding: [], scheduledMessages: [], groupMessageRotations: [] });
+
         // Remove sessionId from body if present to avoid saving it
         const configData = { ...req.body };
         delete configData.sessionId;
 
-        writeJSON(configPath, configData);
+        const mergedConfig = { ...existingConfig, ...configData };
+        writeJSON(configPath, mergedConfig);
         logToUI('system', `ג™ן¸ ׳”׳’׳“׳¨׳•׳× ׳¢׳•׳“׳›׳ ׳• ׳‘׳”׳¦׳׳—׳” ׳¢׳‘׳•׳¨ ${sessionId}.`);
+
+        const session = activeSessions[sessionId];
+        if (session && session.status === 'READY') {
+            initScheduler(session.client, logToUI);
+        }
         res.json({ success: true });
     } catch (err) {
         logToUI('system', `ג— ׳©׳’׳™׳׳” ׳‘׳©׳׳™׳—׳× ׳”׳’׳“׳¨׳•׳×: ${err.message}`);
@@ -1239,6 +1252,79 @@ app.post('/api/group/unlock', async (req, res) => {
     }
 });
 
+app.get('/api/group/daily-rotations', (req, res) => {
+    try {
+        const sessionId = req.query.sessionId || 'default';
+        const configPath = `./configs/session-${sessionId}.json`;
+        const config = readJSON(configPath, { autoReplies: [], forwarding: [], scheduledMessages: [], groupMessageRotations: [] });
+        res.json({
+            success: true,
+            rotations: Array.isArray(config.groupMessageRotations) ? config.groupMessageRotations : []
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to read daily rotations' });
+    }
+});
+
+app.post('/api/group/daily-rotations', (req, res) => {
+    try {
+        const sessionId = req.body.sessionId || 'default';
+        const incoming = Array.isArray(req.body.rotations) ? req.body.rotations : [];
+        const configPath = `./configs/session-${sessionId}.json`;
+        const config = readJSON(configPath, { autoReplies: [], forwarding: [], scheduledMessages: [], groupMessageRotations: [] });
+
+        const sanitizeTime = (value) => {
+            const text = String(value || '').trim();
+            return /^([01]\d|2[0-3]):([0-5]\d)$/.test(text) ? text : '09:00';
+        };
+
+        const sanitizeDays = (days) => {
+            if (!Array.isArray(days)) return [0, 1, 2, 3, 4, 5, 6];
+            const normalized = [...new Set(days
+                .map(d => Number(d))
+                .filter(d => Number.isInteger(d) && d >= 0 && d <= 6))];
+            return normalized.length > 0 ? normalized.sort((a, b) => a - b) : [0, 1, 2, 3, 4, 5, 6];
+        };
+
+        const rotations = incoming
+            .map((row, idx) => {
+                const groupId = normalizeGroupId(row.groupId);
+                const messages = Array.isArray(row.messages)
+                    ? row.messages.map(m => String(m || '').trim()).filter(Boolean)
+                    : [];
+                if (!groupId || messages.length === 0) return null;
+
+                const nextIndexRaw = Number(row.nextIndex);
+                const nextIndex = Number.isInteger(nextIndexRaw) ? nextIndexRaw : 0;
+                return {
+                    id: row.id ? String(row.id) : `rotation_${Date.now()}_${idx}`,
+                    name: String(row.name || '').trim(),
+                    enabled: row.enabled !== false,
+                    groupId,
+                    time: sanitizeTime(row.time),
+                    days: sanitizeDays(row.days),
+                    messages,
+                    nextIndex,
+                    lastSentDateKey: typeof row.lastSentDateKey === 'string' ? row.lastSentDateKey : ''
+                };
+            })
+            .filter(Boolean);
+
+        config.groupMessageRotations = rotations;
+        writeJSON(configPath, config);
+
+        const session = activeSessions[sessionId];
+        if (session && session.status === 'READY') {
+            initScheduler(session.client, logToUI);
+        }
+
+        logToUI(sessionId, `נ“… Daily message rotations updated (${rotations.length} rules).`);
+        res.json({ success: true, rotations });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/group/welcome-message', (req, res) => {
     try {
         const { groupId, sessionId } = req.query;
@@ -1287,7 +1373,8 @@ app.post('/api/group/welcome-message', async (req, res) => {
 
         const botId = session.client.info.wid._serialized;
         const participant = chat.participants.find(p => p.id._serialized === botId);
-        if (!participant || !participant.isAdmin) {
+        const hasAdminAccess = !!(participant && (participant.isAdmin || participant.isSuperAdmin));
+        if (!hasAdminAccess) {
             return res.status(403).json({ error: 'Bot is not admin in this group' });
         }
 
@@ -1480,7 +1567,7 @@ app.get('/api/groups', async (req, res) => {
                 return {
                     id: chat.id._serialized,
                     name: chat.name,
-                    isAdmin: participant ? participant.isAdmin : false,
+                    isAdmin: participant ? (participant.isAdmin || participant.isSuperAdmin) : false,
                     isAnnouncementsOnly: chat.isReadOnly,
                     participantsCount: chat.participants ? chat.participants.length : 0
                 };
