@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const { handleMessage } = require('./messageHandler');
 const { initScheduler } = require('./scheduler');
 const QRCode = require('qrcode');
@@ -25,7 +25,7 @@ io.on('connection', (socket) => {
     socket.emit('init_sessions', sessionData);
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '200mb' }));
 app.use(express.static('public'));
 
 // Sessions management
@@ -209,6 +209,93 @@ function normalizeGroupId(groupId) {
     const trimmed = groupId.trim();
     if (!trimmed) return '';
     return trimmed.includes('@') ? trimmed : `${trimmed}@g.us`;
+}
+
+function getSessionConfigPath(sessionId) {
+    return `./configs/session-${sessionId}.json`;
+}
+
+function getDefaultSessionConfig() {
+    return { autoReplies: [], forwarding: [], scheduledMessages: [], groupMessageRotations: [] };
+}
+
+function getRotationLogPath(sessionId) {
+    return path.join(__dirname, 'data', 'rotation_logs', `session-${sessionId}.jsonl`);
+}
+
+function appendRotationLog(sessionId, entry) {
+    try {
+        const logPath = getRotationLogPath(sessionId);
+        const dir = path.dirname(logPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.appendFileSync(logPath, `${JSON.stringify(entry)}\n`, 'utf8');
+    } catch (e) { }
+}
+
+function readRotationLogs(sessionId, limit = 100) {
+    try {
+        const logPath = getRotationLogPath(sessionId);
+        if (!fs.existsSync(logPath)) return [];
+
+        const max = Math.max(1, Math.min(500, Number(limit) || 100));
+        const lines = fs.readFileSync(logPath, 'utf8').split(/\r?\n/).filter(Boolean);
+        const out = [];
+        for (let i = lines.length - 1; i >= 0 && out.length < max; i--) {
+            try {
+                const parsed = JSON.parse(lines[i]);
+                if (parsed && typeof parsed === 'object') out.push(parsed);
+            } catch (e) { }
+        }
+        return out;
+    } catch (e) {
+        return [];
+    }
+}
+
+function normalizeRotationItems(items, messages) {
+    const fromItems = Array.isArray(items)
+        ? items
+            .map(item => {
+                const text = String(item && item.text ? item.text : '').trim();
+                const media = item && item.media && typeof item.media === 'object'
+                    ? {
+                        mimeType: String(item.media.mimeType || '').trim().toLowerCase(),
+                        data: String(item.media.data || '').trim(),
+                        filename: String(item.media.filename || 'media').trim().slice(0, 120)
+                    }
+                    : null;
+                const hasValidMedia = !!(media && media.mimeType && media.data &&
+                    (media.mimeType.startsWith('image/') || media.mimeType.startsWith('video/')));
+                if (!text && !hasValidMedia) return null;
+                return { text, media: hasValidMedia ? media : null };
+            })
+            .filter(Boolean)
+        : [];
+
+    if (fromItems.length > 0) return fromItems;
+
+    const fromMessages = Array.isArray(messages)
+        ? messages.map(m => String(m || '').trim()).filter(Boolean)
+        : [];
+    return fromMessages.map(text => ({ text, media: null }));
+}
+
+async function sendRotationItem(client, destination, item) {
+    const text = String(item && item.text ? item.text : '').trim();
+    const media = item && item.media ? item.media : null;
+
+    if (media && media.mimeType && media.data) {
+        const payload = new MessageMedia(media.mimeType, media.data, media.filename || 'media');
+        await client.sendMessage(destination, payload, {
+            caption: text || undefined,
+            sendSeen: false
+        });
+        return;
+    }
+
+    if (text) {
+        await client.sendMessage(destination, text, { sendSeen: false });
+    }
 }
 
 function getGroupWelcomeMessagesStore() {
@@ -1286,13 +1373,44 @@ app.post('/api/group/daily-rotations', (req, res) => {
             return normalized.length > 0 ? normalized.sort((a, b) => a - b) : [0, 1, 2, 3, 4, 5, 6];
         };
 
+        const sanitizeMedia = (media) => {
+            if (!media || typeof media !== 'object') return null;
+            const mimeType = String(media.mimeType || '').trim().toLowerCase();
+            const data = String(media.data || '').trim();
+            const filename = String(media.filename || 'media').trim().slice(0, 120);
+
+            if (!mimeType || (!mimeType.startsWith('image/') && !mimeType.startsWith('video/'))) return null;
+            if (!data || !/^[A-Za-z0-9+/=]+$/.test(data)) return null;
+            if (data.length > 35 * 1024 * 1024) return null; // ~25MB binary payload
+
+            return { mimeType, data, filename };
+        };
+
+        const sanitizeItems = (row) => {
+            const fromItems = Array.isArray(row.items) ? row.items : [];
+            const normalizedItems = fromItems
+                .map((item) => {
+                    const text = String(item && item.text ? item.text : '').trim();
+                    const media = sanitizeMedia(item && item.media ? item.media : null);
+                    if (!text && !media) return null;
+                    return { text, media };
+                })
+                .filter(Boolean);
+
+            if (normalizedItems.length > 0) return normalizedItems;
+
+            // Backward compatibility with old "messages" list.
+            const legacyMessages = Array.isArray(row.messages)
+                ? row.messages.map(m => String(m || '').trim()).filter(Boolean)
+                : [];
+            return legacyMessages.map(text => ({ text, media: null }));
+        };
+
         const rotations = incoming
             .map((row, idx) => {
                 const groupId = normalizeGroupId(row.groupId);
-                const messages = Array.isArray(row.messages)
-                    ? row.messages.map(m => String(m || '').trim()).filter(Boolean)
-                    : [];
-                if (!groupId || messages.length === 0) return null;
+                const items = sanitizeItems(row);
+                if (!groupId || items.length === 0) return null;
 
                 const nextIndexRaw = Number(row.nextIndex);
                 const nextIndex = Number.isInteger(nextIndexRaw) ? nextIndexRaw : 0;
@@ -1303,7 +1421,7 @@ app.post('/api/group/daily-rotations', (req, res) => {
                     groupId,
                     time: sanitizeTime(row.time),
                     days: sanitizeDays(row.days),
-                    messages,
+                    items,
                     nextIndex,
                     lastSentDateKey: typeof row.lastSentDateKey === 'string' ? row.lastSentDateKey : ''
                 };
@@ -1322,6 +1440,119 @@ app.post('/api/group/daily-rotations', (req, res) => {
         res.json({ success: true, rotations });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/group/daily-rotations/logs', (req, res) => {
+    try {
+        const sessionId = req.query.sessionId || 'default';
+        const limit = Number(req.query.limit) || 100;
+        const logs = readRotationLogs(sessionId, limit);
+        res.json({ success: true, logs });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'Failed to read daily rotation logs' });
+    }
+});
+
+app.post('/api/group/daily-rotations/send-now', async (req, res) => {
+    const sessionId = req.body.sessionId || 'default';
+    const rotationId = String(req.body.rotationId || '').trim();
+    const requestedIndexRaw = Number(req.body.itemIndex);
+    const requestedGroupId = normalizeGroupId(req.body.groupId);
+    const requestedItem = req.body.item;
+
+    if (!rotationId && !requestedGroupId) {
+        return res.status(400).json({ error: 'Missing rotationId or groupId' });
+    }
+
+    const session = activeSessions[sessionId];
+    if (!session || session.status !== 'READY') {
+        return res.status(503).json({ error: `WhatsApp client "${sessionId}" is not ready` });
+    }
+
+    const configPath = getSessionConfigPath(sessionId);
+    const config = readJSON(configPath, getDefaultSessionConfig());
+    const list = Array.isArray(config.groupMessageRotations) ? config.groupMessageRotations : [];
+    const idx = rotationId ? list.findIndex(row => String(row && row.id) === rotationId) : -1;
+    const rotation = idx >= 0 ? list[idx] : null;
+
+    const groupId = requestedGroupId || normalizeGroupId(rotation && rotation.groupId ? rotation.groupId : '');
+    if (!groupId) {
+        return res.status(400).json({ error: 'Missing groupId for send now' });
+    }
+
+    const requestedItems = normalizeRotationItems([requestedItem], []);
+    const hasRequestedItem = requestedItems.length > 0;
+
+    let items = [];
+    let itemIndex = 0;
+    let itemToSend = null;
+    if (hasRequestedItem) {
+        itemToSend = requestedItems[0];
+        if (rotation) {
+            items = normalizeRotationItems(rotation.items, rotation.messages);
+            if (items.length > 0) {
+                const safeRequested = Number.isInteger(requestedIndexRaw)
+                    ? ((requestedIndexRaw % items.length) + items.length) % items.length
+                    : 0;
+                itemIndex = safeRequested;
+            }
+        }
+    } else {
+        if (!rotation) {
+            return res.status(404).json({ error: 'Rotation rule not found' });
+        }
+        items = normalizeRotationItems(rotation.items, rotation.messages);
+        if (items.length === 0) {
+            return res.status(400).json({ error: 'Rotation has no valid items' });
+        }
+        const rawSavedNext = Number(rotation.nextIndex);
+        const safeSavedNext = Number.isInteger(rawSavedNext) ? rawSavedNext : 0;
+        itemIndex = Number.isInteger(requestedIndexRaw)
+            ? ((requestedIndexRaw % items.length) + items.length) % items.length
+            : ((safeSavedNext % items.length) + items.length) % items.length;
+        itemToSend = items[itemIndex];
+    }
+
+    try {
+        await sendRotationItem(session.client, groupId, itemToSend);
+        const now = new Date();
+        const todayKey = getJerusalemDateKey(now);
+        let nextIndex = 0;
+        if (rotation && items.length > 0) {
+            nextIndex = (itemIndex + 1) % items.length;
+            rotation.items = items;
+            rotation.nextIndex = nextIndex;
+            rotation.lastSentDateKey = todayKey;
+            list[idx] = rotation;
+            config.groupMessageRotations = list;
+            writeJSON(configPath, config);
+        }
+
+        appendRotationLog(sessionId, {
+            ts: now.toISOString(),
+            source: 'manual',
+            status: 'success',
+            rotationId: rotationId || '',
+            groupId,
+            sentIndex: itemIndex,
+            nextIndex,
+            dateKey: todayKey,
+            hasMedia: !!(itemToSend && itemToSend.media)
+        });
+
+        res.json({ success: true, sentIndex: itemIndex, nextIndex });
+    } catch (err) {
+        appendRotationLog(sessionId, {
+            ts: new Date().toISOString(),
+            source: 'manual',
+            status: 'failed',
+            rotationId: rotationId || '',
+            groupId,
+            attemptedIndex: itemIndex,
+            error: err && err.message ? err.message : String(err || 'Unknown error')
+        });
+        res.status(500).json({ error: err.message || 'Failed sending rotation item' });
     }
 });
 

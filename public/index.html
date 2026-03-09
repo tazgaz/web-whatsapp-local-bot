@@ -1354,6 +1354,7 @@ curl -X POST http://localhost:3000/api/send-message \
         const socket = io();
         let sessions = {};
         let selectedSessionId = null;
+        let draggedRotationItemRow = null;
 
         const sessionListEl = document.getElementById('session-list');
         const qrcodeEl = document.getElementById('qrcode');
@@ -1617,11 +1618,299 @@ curl -X POST http://localhost:3000/api/send-message \
             lucide.createIcons();
         }
 
+        function parseDataUrl(raw = '') {
+            const match = String(raw).match(/^data:([^;]+);base64,(.+)$/);
+            if (!match) return null;
+            return { mimeType: match[1], data: match[2] };
+        }
+
+        async function fileToRotationMedia(file) {
+            if (!file) return null;
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        const parsed = parseDataUrl(reader.result || '');
+                        if (!parsed) {
+                            reject(new Error('Unsupported file format'));
+                            return;
+                        }
+                        resolve({ mimeType: parsed.mimeType, data: parsed.data, filename: file.name || 'media' });
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = () => reject(new Error('Failed reading file'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function getDailyRotationLogContainer() {
+            let el = document.getElementById('daily-rotations-log-container');
+            if (el || !dailyRotationsContainer) return el;
+
+            const block = document.createElement('div');
+            block.style.marginTop = '12px';
+            block.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">Delivery Log</div>
+                    <button type="button" class="btn-quick-filter" style="padding:4px 8px; font-size:0.75rem;" onclick="loadDailyRotationLogs()">
+                        <i data-lucide="history" style="width:12px; margin-left:4px;"></i> Refresh
+                    </button>
+                </div>
+                <div id="daily-rotations-log-container" style="max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:10px; background: rgba(0,0,0,0.2); font-size:0.78rem; color:var(--text-muted);">
+                    No delivery logs yet.
+                </div>
+            `;
+            dailyRotationsContainer.insertAdjacentElement('afterend', block);
+            lucide.createIcons();
+            return document.getElementById('daily-rotations-log-container');
+        }
+
+        function normalizeRotationItemsForUI(rule = {}) {
+            if (Array.isArray(rule.items) && rule.items.length) {
+                return rule.items.map(item => ({ text: String(item?.text || ''), media: item && item.media ? item.media : null }));
+            }
+            if (Array.isArray(rule.messages) && rule.messages.length) {
+                return rule.messages.map(text => ({ text: String(text || ''), media: null }));
+            }
+            return [];
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.rotation-item-row')].filter(row => row !== draggedRotationItemRow);
+            let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+            draggableElements.forEach(child => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) closest = { offset, element: child };
+            });
+            return closest.element;
+        }
+
+        function setupRotationItemsDnD(container) {
+            if (!container || container.dataset.dndReady === '1') return;
+            container.dataset.dndReady = '1';
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!draggedRotationItemRow) return;
+                const afterElement = getDragAfterElement(container, e.clientY);
+                if (!afterElement) container.appendChild(draggedRotationItemRow);
+                else container.insertBefore(draggedRotationItemRow, afterElement);
+            });
+        }
+
+        function createRotationItemRow(item = {}) {
+            const row = document.createElement('div');
+            row.className = 'rotation-item-row';
+            row.style.cssText = 'padding:10px; border:1px solid var(--border); border-radius:10px; margin-top:8px; background:rgba(255,255,255,0.02);';
+            row.setAttribute('draggable', 'true');
+
+            const media = item && item.media ? item.media : null;
+            row.dataset.mediaPayload = media ? JSON.stringify(media) : '';
+
+            row.innerHTML = `
+                <div style="display:grid; gap:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:6px;">
+                            <i data-lucide="grip-vertical" style="width:12px;"></i> Item
+                        </span>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <button type="button" class="btn-quick-filter rotation-item-send-now" style="padding:4px 8px; font-size:0.75rem;">
+                                <i data-lucide="send" style="width:12px; margin-left:4px;"></i> Send Now
+                            </button>
+                            <button type="button" class="btn-quick-filter rotation-item-remove" style="padding:4px 8px; font-size:0.75rem;">
+                                <i data-lucide="trash-2" style="width:12px; margin-left:4px;"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                    <textarea class="rotation-item-text" rows="2" placeholder="Text (optional - used as caption when media exists)">${String(item?.text || '')}</textarea>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <input type="file" class="rotation-item-file" accept="image/*,video/*" style="font-size:0.8rem;">
+                        <span class="rotation-item-file-info" style="font-size:0.75rem; color:var(--text-muted);"></span>
+                    </div>
+                </div>
+            `;
+
+            row.querySelector('.rotation-item-remove')?.addEventListener('click', () => row.remove());
+            row.querySelector('.rotation-item-send-now')?.addEventListener('click', () => sendRotationItemNow(row));
+            row.addEventListener('dragstart', () => {
+                draggedRotationItemRow = row;
+                row.style.opacity = '0.55';
+            });
+            row.addEventListener('dragend', () => {
+                row.style.opacity = '1';
+                draggedRotationItemRow = null;
+            });
+
+            const fileInfoEl = row.querySelector('.rotation-item-file-info');
+            if (fileInfoEl) {
+                if (media && media.filename) fileInfoEl.textContent = `Saved file: ${media.filename}`;
+                else if (media) fileInfoEl.textContent = 'Saved file';
+                else fileInfoEl.textContent = 'No file';
+            }
+
+            row.querySelector('.rotation-item-file')?.addEventListener('change', async (event) => {
+                const file = event.target.files && event.target.files[0];
+                if (!file) {
+                    row.dataset.mediaPayload = '';
+                    if (fileInfoEl) fileInfoEl.textContent = 'No file';
+                    return;
+                }
+                try {
+                    const mediaPayload = await fileToRotationMedia(file);
+                    row.dataset.mediaPayload = JSON.stringify(mediaPayload);
+                    if (fileInfoEl) fileInfoEl.textContent = `Selected: ${mediaPayload.filename}`;
+                } catch (err) {
+                    row.dataset.mediaPayload = '';
+                    if (fileInfoEl) fileInfoEl.textContent = 'File loading failed';
+                    alert(`File loading error: ${err.message}`);
+                }
+            });
+
+            return row;
+        }
+
+        function appendRotationItemRow(container, item = {}) {
+            if (!container) return;
+            container.appendChild(createRotationItemRow(item));
+            setupRotationItemsDnD(container);
+            lucide.createIcons();
+        }
+
+        function extractRotationItemsFromCard(card) {
+            return Array.from(card.querySelectorAll('.rotation-item-row'))
+                .map(row => {
+                    const text = String(row.querySelector('.rotation-item-text')?.value || '').trim();
+                    let media = null;
+                    const rawMedia = row.dataset.mediaPayload || '';
+                    if (rawMedia) {
+                        try {
+                            const parsed = JSON.parse(rawMedia);
+                            if (parsed && typeof parsed === 'object') media = parsed;
+                        } catch (e) { }
+                    }
+                    if (!text && !media) return null;
+                    return { text, media };
+                })
+                .filter(Boolean);
+        }
+
+        function collectDailyRotationRulesFromUI() {
+            return Array.from(document.querySelectorAll('[data-rotation-rule="true"]')).map(card => {
+                const days = Array.from(card.querySelectorAll('.rotation-day.active-type'))
+                    .map(el => Number(el.dataset.value))
+                    .filter(Number.isInteger);
+                return {
+                    id: card.dataset.rotationId || `rotation_${Date.now()}`,
+                    name: card.querySelector('.rotation-name')?.value || '',
+                    enabled: !!card.querySelector('.rotation-enabled')?.checked,
+                    groupId: card.querySelector('.rotation-group-id')?.value || '',
+                    time: card.querySelector('.rotation-time')?.value || '09:00',
+                    days: days.length ? days : [0, 1, 2, 3, 4, 5, 6],
+                    items: extractRotationItemsFromCard(card)
+                };
+            });
+        }
+
+        async function sendRotationItemNow(row) {
+            if (!selectedSessionId) {
+                alert('Select a session first');
+                return;
+            }
+            const card = row.closest('[data-rotation-rule="true"]');
+            if (!card) return;
+            const rotationId = card.dataset.rotationId || '';
+            const groupId = String(card.querySelector('.rotation-group-id')?.value || '').trim();
+            const itemIndex = Array.from(card.querySelectorAll('.rotation-item-row')).indexOf(row);
+            if (!rotationId || itemIndex < 0) {
+                alert('Missing rule information');
+                return;
+            }
+            const itemText = String(row.querySelector('.rotation-item-text')?.value || '').trim();
+            let itemMedia = null;
+            const rawMedia = row.dataset.mediaPayload || '';
+            if (rawMedia) {
+                try { itemMedia = JSON.parse(rawMedia); } catch (e) { }
+            }
+            if (!itemText && !itemMedia) {
+                alert('Item is empty');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/group/daily-rotations/send-now', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: selectedSessionId,
+                        rotationId,
+                        groupId,
+                        itemIndex,
+                        item: { text: itemText, media: itemMedia }
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(`Send failed: ${data.error || 'Unknown error'}`);
+                    await loadDailyRotationLogs();
+                    return;
+                }
+                await Promise.all([loadDailyRotations(), loadDailyRotationLogs()]);
+                alert('Sent successfully');
+            } catch (err) {
+                alert(`Communication error: ${err.message}`);
+                await loadDailyRotationLogs();
+            }
+        }
+
+        function renderDailyRotationLogs(logs = []) {
+            const logsEl = getDailyRotationLogContainer();
+            if (!logsEl) return;
+            if (!Array.isArray(logs) || logs.length === 0) {
+                logsEl.innerHTML = 'No delivery logs yet.';
+                return;
+            }
+            logsEl.innerHTML = logs.map((entry) => {
+                const ts = String(entry.ts || '').replace('T', ' ').replace('Z', '');
+                const source = entry.source || 'unknown';
+                const status = entry.status || 'unknown';
+                const rule = entry.rotationId || '-';
+                const idx = Number.isInteger(Number(entry.sentIndex)) ? `#${entry.sentIndex}` : '';
+                const extra = entry.error ? ` | ${entry.error}` : '';
+                const color = status === 'success' ? '#22c55e' : '#ef4444';
+                return `<div style="padding:6px 4px; border-bottom:1px solid var(--border); color:var(--text);">
+                    <span style="color:var(--text-muted);">${ts}</span>
+                    <span style="color:${color}; font-weight:700; margin-right:8px;">${status.toUpperCase()}</span>
+                    <span style="color:var(--primary);">${source}</span>
+                    <span style="margin-right:8px;">rule=${rule} ${idx}</span>
+                    <span style="color:var(--text-muted);">${extra}</span>
+                </div>`;
+            }).join('');
+        }
+
+        async function loadDailyRotationLogs() {
+            if (!selectedSessionId) {
+                renderDailyRotationLogs([]);
+                return;
+            }
+            try {
+                const res = await fetch(`/api/group/daily-rotations/logs?sessionId=${encodeURIComponent(selectedSessionId)}&limit=120&t=${Date.now()}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to load logs');
+                renderDailyRotationLogs(data.logs || []);
+            } catch (err) {
+                const logsEl = getDailyRotationLogContainer();
+                if (logsEl) logsEl.innerHTML = `Failed loading logs: ${err.message}. If you just updated code, restart the server.`;
+            }
+        }
+
         function renderDailyRotations(rotations = []) {
             if (!dailyRotationsContainer) return;
+            getDailyRotationLogContainer();
 
             if (!Array.isArray(rotations) || rotations.length === 0) {
-                dailyRotationsContainer.innerHTML = '<p style="font-size:0.85rem; color: var(--text-muted); text-align:center; padding:12px; border:1px dashed var(--border); border-radius:10px;">עדיין לא הוגדרו מסרים יומיים. לחץ "הוסף חוק מסרים".</p>';
+                dailyRotationsContainer.innerHTML = '<p style="font-size:0.85rem; color: var(--text-muted); text-align:center; padding:12px; border:1px dashed var(--border); border-radius:10px;">No daily rules yet. Click "Add Rule".</p>';
                 return;
             }
 
@@ -1636,7 +1925,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 const time = rule.time || '09:00';
                 const enabled = rule.enabled !== false;
                 const name = rule.name || '';
-                const messages = Array.isArray(rule.messages) ? rule.messages : [];
+                const items = normalizeRotationItemsForUI(rule);
                 const days = Array.isArray(rule.days) && rule.days.length ? rule.days : [0, 1, 2, 3, 4, 5, 6];
 
                 const dayTags = DAY_OPTIONS.map(day => {
@@ -1648,38 +1937,45 @@ curl -X POST http://localhost:3000/api/send-message \
                     <div class="btn-delete-rule" onclick="this.parentElement.remove()">
                         <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
                     </div>
-
                     <div style="display:grid; grid-template-columns: 1fr auto; gap: 12px; margin-bottom: 10px; align-items: end;">
                         <div>
-                            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">שם חוק (אופציונלי)</span>
-                            <input type="text" class="rotation-name" value="${name}" placeholder="לדוגמה: בוקר עסקי">
+                            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">Rule Name</span>
+                            <input type="text" class="rotation-name" value="${name}" placeholder="Morning group update">
                         </div>
                         <label style="display:flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:700; margin-bottom:8px;">
-                            <input type="checkbox" class="rotation-enabled" ${enabled ? 'checked' : ''}> פעיל
+                            <input type="checkbox" class="rotation-enabled" ${enabled ? 'checked' : ''}> Active
                         </label>
                     </div>
-
                     <div style="display:grid; grid-template-columns: 1fr 160px; gap: 12px; margin-bottom: 10px;">
                         <div>
-                            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">מזהה קבוצה</span>
+                            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">Group ID</span>
                             <input type="text" class="rotation-group-id" value="${groupId}" placeholder="120363123456789012@g.us">
                         </div>
                         <div>
-                            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">שעה</span>
+                            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">Time</span>
                             <input type="time" class="rotation-time" value="${time}">
                         </div>
                     </div>
-
                     <div style="margin-bottom: 10px;">
-                        <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">ימי שליחה</span>
+                        <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">Days</span>
                         <div style="display:flex; gap:8px; margin-top:8px; flex-wrap: wrap;">${dayTags}</div>
                     </div>
-
-                    <div>
-                        <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">מסרים (מסר אחד בכל שורה, נשלח לפי הסדר)</span>
-                        <textarea class="rotation-messages" rows="5" placeholder="מסר 1&#10;מסר 2&#10;מסר 3">${messages.join('\n')}</textarea>
+                    <div style="margin-bottom: 6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">Items (text + optional image/video)</span>
+                            <button type="button" class="btn-quick-filter add-rotation-item" style="padding: 6px 10px; font-size: 0.75rem;">
+                                <i data-lucide="plus" style="width: 12px; margin-left: 4px;"></i> Add Item
+                            </button>
+                        </div>
+                        <div class="rotation-items" style="margin-top: 8px;"></div>
                     </div>
                 `;
+
+                const itemsContainer = card.querySelector('.rotation-items');
+                card.querySelector('.add-rotation-item')?.addEventListener('click', () => appendRotationItemRow(itemsContainer, { text: '', media: null }));
+                if (items.length > 0) items.forEach(item => appendRotationItemRow(itemsContainer, item));
+                else appendRotationItemRow(itemsContainer, { text: '', media: null });
+
                 dailyRotationsContainer.appendChild(card);
             });
             lucide.createIcons();
@@ -1693,25 +1989,10 @@ curl -X POST http://localhost:3000/api/send-message \
                 groupId: '',
                 time: '09:00',
                 days: [0, 1, 2, 3, 4, 5, 6],
-                messages: []
+                items: [{ text: '', media: null }]
             };
 
-            const current = Array.from(document.querySelectorAll('[data-rotation-rule="true"]')).map(card => {
-                const messages = (card.querySelector('.rotation-messages')?.value || '')
-                    .split('\n').map(line => line.trim()).filter(Boolean);
-                const days = Array.from(card.querySelectorAll('.rotation-day.active-type'))
-                    .map(el => Number(el.dataset.value)).filter(Number.isInteger);
-                return {
-                    id: card.dataset.rotationId,
-                    name: card.querySelector('.rotation-name')?.value || '',
-                    enabled: !!card.querySelector('.rotation-enabled')?.checked,
-                    groupId: card.querySelector('.rotation-group-id')?.value || '',
-                    time: card.querySelector('.rotation-time')?.value || '09:00',
-                    days: days.length ? days : [0, 1, 2, 3, 4, 5, 6],
-                    messages
-                };
-            });
-
+            const current = collectDailyRotationRulesFromUI();
             current.push(rule);
             renderDailyRotations(current);
         }
@@ -1723,63 +2004,48 @@ curl -X POST http://localhost:3000/api/send-message \
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Failed to load daily rotations');
                 renderDailyRotations(data.rotations || []);
+                loadDailyRotationLogs();
             } catch (err) {
                 if (dailyRotationsContainer) {
-                    dailyRotationsContainer.innerHTML = `<p style="font-size:0.85rem; color: var(--danger); text-align:center; padding:12px;">שגיאה בטעינת מסרים יומיים: ${err.message}</p>`;
+                    dailyRotationsContainer.innerHTML = `<p style="font-size:0.85rem; color: var(--danger); text-align:center; padding:12px;">Failed to load daily rotations: ${err.message}</p>`;
                 }
             }
         }
 
-        async function saveDailyRotations() {
+        async function saveDailyRotations(options = {}) {
+            const silent = !!(options && options.silent);
             if (!selectedSessionId) {
-                alert('אנא בחר חשבון תחילה');
-                return;
+                if (!silent) alert('Select a session first');
+                return false;
             }
 
-            const rules = Array.from(document.querySelectorAll('[data-rotation-rule="true"]')).map(card => {
-                const messages = (card.querySelector('.rotation-messages')?.value || '')
-                    .split('\n')
-                    .map(line => line.trim())
-                    .filter(Boolean);
-
-                const days = Array.from(card.querySelectorAll('.rotation-day.active-type'))
-                    .map(el => Number(el.dataset.value))
-                    .filter(Number.isInteger);
-
-                return {
-                    id: card.dataset.rotationId || `rotation_${Date.now()}`,
-                    name: card.querySelector('.rotation-name')?.value || '',
-                    enabled: !!card.querySelector('.rotation-enabled')?.checked,
-                    groupId: card.querySelector('.rotation-group-id')?.value || '',
-                    time: card.querySelector('.rotation-time')?.value || '09:00',
-                    days: days.length ? days : [0, 1, 2, 3, 4, 5, 6],
-                    messages
-                };
-            });
-
-            const validRules = rules.filter(rule => (rule.groupId || '').trim() && Array.isArray(rule.messages) && rule.messages.length > 0);
+            const rules = collectDailyRotationRulesFromUI();
+            const validRules = rules.filter(rule =>
+                (rule.groupId || '').trim() &&
+                Array.isArray(rule.items) &&
+                rule.items.length > 0
+            );
 
             try {
                 const res = await fetch('/api/group/daily-rotations', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId: selectedSessionId,
-                        rotations: validRules
-                    })
+                    body: JSON.stringify({ sessionId: selectedSessionId, rotations: validRules })
                 });
                 const data = await res.json();
                 if (!res.ok) {
-                    alert(`שגיאה בשמירה: ${data.error || 'Unknown error'}`);
-                    return;
+                    if (!silent) alert(`Save failed: ${data.error || 'Unknown error'}`);
+                    return false;
                 }
                 renderDailyRotations(data.rotations || []);
-                alert('מסרים יומיים נשמרו בהצלחה');
+                loadDailyRotationLogs();
+                if (!silent) alert('Saved successfully');
+                return true;
             } catch (err) {
-                alert(`שגיאת תקשורת: ${err.message}`);
+                if (!silent) alert(`Communication error: ${err.message}`);
+                return false;
             }
         }
-
         function normalizeGroupIdForUI(groupId) {
             const raw = (groupId || '').trim();
             if (!raw) return '';
@@ -3006,4 +3272,3 @@ curl -X POST http://localhost:3000/api/send-message \
 </body>
 
 </html>
-
