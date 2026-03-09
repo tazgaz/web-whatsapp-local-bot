@@ -1618,31 +1618,24 @@ curl -X POST http://localhost:3000/api/send-message \
             lucide.createIcons();
         }
 
-        function parseDataUrl(raw = '') {
-            const match = String(raw).match(/^data:([^;]+);base64,(.+)$/);
-            if (!match) return null;
-            return { mimeType: match[1], data: match[2] };
-        }
-
-        async function fileToRotationMedia(file) {
+        async function uploadRotationMedia(file) {
             if (!file) return null;
-            return await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    try {
-                        const parsed = parseDataUrl(reader.result || '');
-                        if (!parsed) {
-                            reject(new Error('Unsupported file format'));
-                            return;
-                        }
-                        resolve({ mimeType: parsed.mimeType, data: parsed.data, filename: file.name || 'media' });
-                    } catch (err) {
-                        reject(err);
-                    }
-                };
-                reader.onerror = () => reject(new Error('Failed reading file'));
-                reader.readAsDataURL(file);
+            if (!selectedSessionId) throw new Error('Select a session first');
+
+            const form = new FormData();
+            form.append('sessionId', selectedSessionId);
+            form.append('file', file);
+
+            const res = await fetch('/api/group/daily-rotations/upload-media', {
+                method: 'POST',
+                body: form
             });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to upload media');
+            }
+            if (!data.media) throw new Error('Upload response missing media payload');
+            return data.media;
         }
 
         function getDailyRotationLogContainer() {
@@ -1726,7 +1719,7 @@ curl -X POST http://localhost:3000/api/send-message \
                     </div>
                     <textarea class="rotation-item-text" rows="2" placeholder="Text (optional - used as caption when media exists)">${String(item?.text || '')}</textarea>
                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <input type="file" class="rotation-item-file" accept="image/*,video/*" style="font-size:0.8rem;">
+                        <input type="file" class="rotation-item-file" accept="image/*,video/mp4,video/*" style="font-size:0.8rem;">
                         <span class="rotation-item-file-info" style="font-size:0.75rem; color:var(--text-muted);"></span>
                     </div>
                 </div>
@@ -1758,13 +1751,13 @@ curl -X POST http://localhost:3000/api/send-message \
                     return;
                 }
                 try {
-                    const mediaPayload = await fileToRotationMedia(file);
+                    const mediaPayload = await uploadRotationMedia(file);
                     row.dataset.mediaPayload = JSON.stringify(mediaPayload);
-                    if (fileInfoEl) fileInfoEl.textContent = `Selected: ${mediaPayload.filename}`;
+                    if (fileInfoEl) fileInfoEl.textContent = `Uploaded: ${mediaPayload.filename}`;
                 } catch (err) {
                     row.dataset.mediaPayload = '';
                     if (fileInfoEl) fileInfoEl.textContent = 'File loading failed';
-                    alert(`File loading error: ${err.message}`);
+                    alert(`File upload error: ${err.message}`);
                 }
             });
 
@@ -1905,6 +1898,32 @@ curl -X POST http://localhost:3000/api/send-message \
             }
         }
 
+        async function resetDailyRotationQueue(rotationId) {
+            if (!selectedSessionId || !rotationId) {
+                alert('Missing session or rule');
+                return;
+            }
+            try {
+                const res = await fetch('/api/group/daily-rotations/reset-queue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: selectedSessionId,
+                        rotationId
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(`Reset failed: ${data.error || 'Unknown error'}`);
+                    return;
+                }
+                await Promise.all([loadDailyRotations(), loadDailyRotationLogs()]);
+                alert('Queue reset: next send starts from item #1');
+            } catch (err) {
+                alert(`Communication error: ${err.message}`);
+            }
+        }
+
         function renderDailyRotations(rotations = []) {
             if (!dailyRotationsContainer) return;
             getDailyRotationLogContainer();
@@ -1942,9 +1961,14 @@ curl -X POST http://localhost:3000/api/send-message \
                             <span style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">Rule Name</span>
                             <input type="text" class="rotation-name" value="${name}" placeholder="Morning group update">
                         </div>
-                        <label style="display:flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:700; margin-bottom:8px;">
-                            <input type="checkbox" class="rotation-enabled" ${enabled ? 'checked' : ''}> Active
-                        </label>
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                            <button type="button" class="btn-quick-filter reset-rotation-queue" style="padding:4px 8px; font-size:0.75rem;">
+                                <i data-lucide="rotate-ccw" style="width:12px; margin-left:4px;"></i> Reset Queue
+                            </button>
+                            <label style="display:flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:700;">
+                                <input type="checkbox" class="rotation-enabled" ${enabled ? 'checked' : ''}> Active
+                            </label>
+                        </div>
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr 160px; gap: 12px; margin-bottom: 10px;">
                         <div>
@@ -1972,6 +1996,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 `;
 
                 const itemsContainer = card.querySelector('.rotation-items');
+                card.querySelector('.reset-rotation-queue')?.addEventListener('click', () => resetDailyRotationQueue(card.dataset.rotationId || ''));
                 card.querySelector('.add-rotation-item')?.addEventListener('click', () => appendRotationItemRow(itemsContainer, { text: '', media: null }));
                 if (items.length > 0) items.forEach(item => appendRotationItemRow(itemsContainer, item));
                 else appendRotationItemRow(itemsContainer, { text: '', media: null });

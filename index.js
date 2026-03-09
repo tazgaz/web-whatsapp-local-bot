@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const multer = require('multer');
 const { handleMessage } = require('./messageHandler');
 const { initScheduler } = require('./scheduler');
 const QRCode = require('qrcode');
@@ -14,6 +15,14 @@ const server = http.createServer(app);
 const activeSessions = {}; // { id: { client, status, qr } }
 const io = new Server(server);
 const port = 3000;
+const ROTATION_MEDIA_TMP_DIR = path.join(__dirname, 'data', 'rotation_media', '_tmp');
+if (!fs.existsSync(ROTATION_MEDIA_TMP_DIR)) {
+    fs.mkdirSync(ROTATION_MEDIA_TMP_DIR, { recursive: true });
+}
+const rotationMediaUpload = multer({
+    dest: ROTATION_MEDIA_TMP_DIR,
+    limits: { fileSize: 200 * 1024 * 1024 } // 200MB
+});
 
 io.on('connection', (socket) => {
     console.log('[Socket] New client connected');
@@ -261,11 +270,15 @@ function normalizeRotationItems(items, messages) {
                     ? {
                         mimeType: String(item.media.mimeType || '').trim().toLowerCase(),
                         data: String(item.media.data || '').trim(),
-                        filename: String(item.media.filename || 'media').trim().slice(0, 120)
+                        filename: String(item.media.filename || 'media').trim().slice(0, 120),
+                        filePath: String(item.media.filePath || '').trim(),
+                        storage: String(item.media.storage || '').trim().toLowerCase()
                     }
                     : null;
-                const hasValidMedia = !!(media && media.mimeType && media.data &&
-                    (media.mimeType.startsWith('image/') || media.mimeType.startsWith('video/')));
+                const hasValidMedia = !!(media && media.mimeType && (
+                    (media.data && (media.mimeType.startsWith('image/') || media.mimeType.startsWith('video/'))) ||
+                    (media.filePath && (media.storage === 'file' || media.storage === ''))
+                ));
                 if (!text && !hasValidMedia) return null;
                 return { text, media: hasValidMedia ? media : null };
             })
@@ -283,6 +296,17 @@ function normalizeRotationItems(items, messages) {
 async function sendRotationItem(client, destination, item) {
     const text = String(item && item.text ? item.text : '').trim();
     const media = item && item.media ? item.media : null;
+
+    if (media && media.filePath) {
+        const fullPath = path.isAbsolute(media.filePath) ? media.filePath : path.join(__dirname, media.filePath);
+        if (!fs.existsSync(fullPath)) throw new Error(`Media file not found: ${media.filePath}`);
+        const payload = MessageMedia.fromFilePath(fullPath);
+        await client.sendMessage(destination, payload, {
+            caption: text || undefined,
+            sendSeen: false
+        });
+        return;
+    }
 
     if (media && media.mimeType && media.data) {
         const payload = new MessageMedia(media.mimeType, media.data, media.filename || 'media');
@@ -1378,8 +1402,15 @@ app.post('/api/group/daily-rotations', (req, res) => {
             const mimeType = String(media.mimeType || '').trim().toLowerCase();
             const data = String(media.data || '').trim();
             const filename = String(media.filename || 'media').trim().slice(0, 120);
+            const filePath = String(media.filePath || '').trim();
+            const storage = String(media.storage || '').trim().toLowerCase();
 
             if (!mimeType || (!mimeType.startsWith('image/') && !mimeType.startsWith('video/'))) return null;
+            if (filePath) {
+                const fullPath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, filePath);
+                if (!fs.existsSync(fullPath)) return null;
+                return { mimeType, filename, filePath, storage: 'file' };
+            }
             if (!data || !/^[A-Za-z0-9+/=]+$/.test(data)) return null;
             if (data.length > 35 * 1024 * 1024) return null; // ~25MB binary payload
 
@@ -1440,6 +1471,84 @@ app.post('/api/group/daily-rotations', (req, res) => {
         res.json({ success: true, rotations });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/group/daily-rotations/upload-media', rotationMediaUpload.single('file'), (req, res) => {
+    const uploaded = req.file;
+    try {
+        const sessionId = (req.body && req.body.sessionId) ? String(req.body.sessionId) : 'default';
+        if (!uploaded) return res.status(400).json({ error: 'Missing file' });
+
+        const mimeType = String(uploaded.mimetype || '').toLowerCase();
+        if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
+            try { fs.unlinkSync(uploaded.path); } catch (e) { }
+            return res.status(400).json({ error: 'Only image/video files are allowed' });
+        }
+
+        const safeSessionId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const destDir = path.join(__dirname, 'data', 'rotation_media', `session-${safeSessionId}`);
+        if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+
+        const extFromName = path.extname(uploaded.originalname || '').toLowerCase();
+        const ext = extFromName || (mimeType.startsWith('video/') ? '.mp4' : '.bin');
+        const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}${ext}`;
+        const fullPath = path.join(destDir, fileName);
+        fs.renameSync(uploaded.path, fullPath);
+
+        const relativePath = path.relative(__dirname, fullPath).replace(/\\/g, '/');
+        res.json({
+            success: true,
+            media: {
+                storage: 'file',
+                filePath: relativePath,
+                mimeType,
+                filename: (uploaded.originalname || fileName).slice(0, 120)
+            }
+        });
+    } catch (err) {
+        if (uploaded && uploaded.path) {
+            try { fs.unlinkSync(uploaded.path); } catch (e) { }
+        }
+        res.status(500).json({ error: err.message || 'Failed uploading media' });
+    }
+});
+
+app.post('/api/group/daily-rotations/reset-queue', (req, res) => {
+    try {
+        const sessionId = req.body.sessionId || 'default';
+        const rotationId = String(req.body.rotationId || '').trim();
+        if (!rotationId) return res.status(400).json({ error: 'Missing rotationId' });
+
+        const configPath = getSessionConfigPath(sessionId);
+        const config = readJSON(configPath, getDefaultSessionConfig());
+        const list = Array.isArray(config.groupMessageRotations) ? config.groupMessageRotations : [];
+        const idx = list.findIndex(row => String(row && row.id) === rotationId);
+        if (idx === -1) return res.status(404).json({ error: 'Rotation rule not found' });
+
+        const rotation = list[idx];
+        rotation.nextIndex = 0;
+        rotation.lastSentDateKey = '';
+        list[idx] = rotation;
+        config.groupMessageRotations = list;
+        writeJSON(configPath, config);
+
+        appendRotationLog(sessionId, {
+            ts: new Date().toISOString(),
+            source: 'manual',
+            status: 'queue_reset',
+            rotationId,
+            groupId: normalizeGroupId(rotation.groupId)
+        });
+
+        const session = activeSessions[sessionId];
+        if (session && session.status === 'READY') {
+            initScheduler(session.client, logToUI);
+        }
+
+        res.json({ success: true, rotation });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'Failed to reset queue' });
     }
 });
 

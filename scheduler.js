@@ -121,10 +121,12 @@ function normalizeRotationItems(items, messages) {
                     ? {
                         mimeType: String(item.media.mimeType || '').trim(),
                         data: String(item.media.data || '').trim(),
-                        filename: String(item.media.filename || 'media').trim()
+                        filename: String(item.media.filename || 'media').trim(),
+                        filePath: String(item.media.filePath || '').trim(),
+                        storage: String(item.media.storage || '').trim().toLowerCase()
                     }
                     : null;
-                const hasValidMedia = !!(media && media.mimeType && media.data);
+                const hasValidMedia = !!(media && media.mimeType && (media.data || media.filePath));
                 if (!text && !hasValidMedia) return null;
                 return { text, media: hasValidMedia ? media : null };
             })
@@ -142,6 +144,16 @@ function normalizeRotationItems(items, messages) {
 async function sendRotationItem(client, destination, item) {
     const text = String(item && item.text ? item.text : '').trim();
     const media = item && item.media ? item.media : null;
+    if (media && media.filePath) {
+        const fullPath = path.isAbsolute(media.filePath) ? media.filePath : path.join(__dirname, media.filePath);
+        if (!fs.existsSync(fullPath)) throw new Error(`Media file not found: ${media.filePath}`);
+        const payload = MessageMedia.fromFilePath(fullPath);
+        await client.sendMessage(destination, payload, {
+            caption: text || undefined,
+            sendSeen: false
+        });
+        return;
+    }
     if (media && media.mimeType && media.data) {
         const payload = new MessageMedia(media.mimeType, media.data, media.filename || 'media');
         await client.sendMessage(destination, payload, {
