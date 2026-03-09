@@ -895,6 +895,17 @@
                             <div id="loader" class="loader" style="display: none;"></div>
                             <p id="qr-msg" style="margin-top: 15px; color: #64748b;">בחר חשבון מהתפריט בצד</p>
                             <div id="qrcode"></div>
+                            <div style="margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px;">
+                                <p style="margin: 0 0 8px; font-size: 0.8rem; color: var(--text-muted);">Pair via phone number (no QR)</p>
+                                <div style="display:flex; gap:8px; flex-wrap: wrap;">
+                                    <input id="pair-phone-input" type="text" placeholder="9725XXXXXXXX"
+                                        style="flex:1; min-width:180px; padding:10px; border-radius:10px; border:1px solid var(--border); background: var(--glass-bg); color: var(--text);">
+                                    <button onclick="requestPairingCode()" class="btn-quick-filter" style="padding: 8px 12px;">
+                                        <i data-lucide="smartphone" style="width: 12px; margin-left: 6px;"></i> Get Code
+                                    </button>
+                                </div>
+                                <div id="pairing-code-display" style="margin-top:8px; font-size:0.9rem; color: var(--primary); font-weight:700;"></div>
+                            </div>
                         </div>
                         <div style="margin-top: 20px;">
                             <button onclick="deleteSession(selectedSessionId)"
@@ -2502,6 +2513,42 @@ curl -X POST http://localhost:3000/api/send-message \
             navigator.clipboard.writeText(code).then(() => {
                 alert('הקוד הועתק ללוח!');
             });
+        }
+
+        async function requestPairingCode() {
+            if (!selectedSessionId) {
+                alert('Select a session first');
+                return;
+            }
+
+            const input = document.getElementById('pair-phone-input');
+            const out = document.getElementById('pairing-code-display');
+            const raw = String(input?.value || '').trim();
+            const phoneNumber = raw.replace(/[^\d]/g, '');
+            if (!phoneNumber) {
+                alert('Enter phone number in international format, e.g. 9725XXXXXXXX');
+                return;
+            }
+
+            if (out) out.textContent = 'Requesting pairing code...';
+            try {
+                const res = await fetch('/api/pairing-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId: selectedSessionId, phoneNumber })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    if (out) out.textContent = '';
+                    alert(`Pairing failed: ${data.error || 'Unknown error'}`);
+                    return;
+                }
+                if (out) out.textContent = `Pairing Code: ${data.pairingCode}`;
+                qrMsg.innerText = 'Use this code on your phone: WhatsApp > Linked devices > Link with phone number';
+            } catch (err) {
+                if (out) out.textContent = '';
+                alert(`Communication error: ${err.message}`);
+            }
         }
 
         function updateUIForSession(s) {

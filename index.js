@@ -322,6 +322,15 @@ async function sendRotationItem(client, destination, item) {
     }
 }
 
+async function waitForPupPage(client, timeoutMs = 20000) {
+    const start = Date.now();
+    while (!client.pupPage) {
+        if (Date.now() - start > timeoutMs) throw new Error('WhatsApp page is not ready yet');
+        await new Promise(r => setTimeout(r, 200));
+    }
+    return client.pupPage;
+}
+
 function getGroupWelcomeMessagesStore() {
     const store = readJSON(GROUP_WELCOME_MESSAGES_FILE, { sessions: {} });
     if (!store.sessions) store.sessions = {};
@@ -855,6 +864,44 @@ app.post('/api/sessions', (req, res) => {
     }
 
     res.json({ success: true, id: sanitizedId });
+});
+
+app.post('/api/pairing-code', async (req, res) => {
+    try {
+        const sessionId = req.body.sessionId || 'default';
+        const rawPhone = String(req.body.phoneNumber || '').trim();
+        const phoneNumber = rawPhone.replace(/[^\d]/g, '');
+        if (!phoneNumber) {
+            return res.status(400).json({ error: 'Missing phoneNumber' });
+        }
+
+        const session = activeSessions[sessionId] || startSession(sessionId);
+        if (!session || !session.client) {
+            return res.status(500).json({ error: 'Failed to initialize session' });
+        }
+        if (session.status === 'READY') {
+            return res.status(400).json({ error: 'Session is already connected' });
+        }
+
+        const page = await waitForPupPage(session.client, 30000);
+        try {
+            await page.exposeFunction('onCodeReceivedEvent', (code) => code);
+        } catch (e) {
+            const msg = String(e && e.message ? e.message : e);
+            if (!msg.includes('already exists')) throw e;
+        }
+        await page.evaluate(() => {
+            if (typeof window.onCodeReceivedEvent !== 'function') {
+                window.onCodeReceivedEvent = (code) => code;
+            }
+        });
+
+        const pairingCode = await session.client.requestPairingCode(phoneNumber, true, 180000);
+        logToUI(sessionId, `Pairing code requested for ${phoneNumber}`);
+        res.json({ success: true, pairingCode });
+    } catch (err) {
+        res.status(500).json({ error: err.message || 'Failed to request pairing code' });
+    }
 });
 
 app.delete('/api/sessions/:id', async (req, res) => {
