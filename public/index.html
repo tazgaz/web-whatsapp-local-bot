@@ -1169,7 +1169,23 @@ curl -X POST http://localhost:3000/api/send-message \
                                     Enabled
                                 </label>
                             </div>
-                            <textarea id="group-welcome-message" rows="3" placeholder="Private welcome message sent when a user joins this group via invite link..."></textarea>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                <div>
+                                    <label for="group-welcome-min-delay" style="display:block; font-size:0.8rem; color:var(--muted); margin-bottom:6px;">Min Delay (seconds)</label>
+                                    <input type="number" id="group-welcome-min-delay" min="15" max="180" value="15">
+                                </div>
+                                <div>
+                                    <label for="group-welcome-max-delay" style="display:block; font-size:0.8rem; color:var(--muted); margin-bottom:6px;">Max Delay (seconds)</label>
+                                    <input type="number" id="group-welcome-max-delay" min="15" max="180" value="180">
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center; justify-content: space-between; gap:10px; margin-bottom:8px;">
+                                <span style="font-size:0.8rem; color:var(--muted);">Message Bank</span>
+                                <button onclick="addGroupWelcomeMessageRow('')" class="btn-quick-filter" type="button">
+                                    <i data-lucide="plus" style="width: 12px; margin-left: 6px;"></i> Add Message
+                                </button>
+                            </div>
+                            <div id="group-welcome-message-list" style="display:flex; flex-direction:column; gap:8px;"></div>
                             <div style="display:flex; gap:10px; margin-top:10px;">
                                 <button onclick="loadGroupWelcomeMessage()" class="btn-quick-filter">
                                     <i data-lucide="download" style="width: 12px; margin-left: 6px;"></i> Load Message
@@ -1366,6 +1382,8 @@ curl -X POST http://localhost:3000/api/send-message \
         let sessions = {};
         let selectedSessionId = null;
         let draggedRotationItemRow = null;
+        let dailyRotationsAutosaveTimer = null;
+        let suppressDailyRotationsAutosave = false;
 
         const sessionListEl = document.getElementById('session-list');
         const qrcodeEl = document.getElementById('qrcode');
@@ -1525,9 +1543,12 @@ curl -X POST http://localhost:3000/api/send-message \
             loadManagedGroups(); // Load managed groups
             loadDailyRotations(); // Load daily group message rotations
             const welcomeEnabled = document.getElementById('group-welcome-enabled');
-            const welcomeMessage = document.getElementById('group-welcome-message');
+            const welcomeMinDelay = document.getElementById('group-welcome-min-delay');
+            const welcomeMaxDelay = document.getElementById('group-welcome-max-delay');
             if (welcomeEnabled) welcomeEnabled.checked = false;
-            if (welcomeMessage) welcomeMessage.value = '';
+            if (welcomeMinDelay) welcomeMinDelay.value = 15;
+            if (welcomeMaxDelay) welcomeMaxDelay.value = 180;
+            renderGroupWelcomeMessages(['']);
 
             // Reload contacts if we are currently on the contacts tab
             if (document.getElementById('contacts-section').classList.contains('active')) {
@@ -1704,6 +1725,16 @@ curl -X POST http://localhost:3000/api/send-message \
             });
         }
 
+        function queueDailyRotationsAutosave() {
+            if (suppressDailyRotationsAutosave) return;
+            clearTimeout(dailyRotationsAutosaveTimer);
+            dailyRotationsAutosaveTimer = setTimeout(async () => {
+                if (suppressDailyRotationsAutosave) return;
+                const ok = await saveDailyRotations({ silent: true });
+                if (!ok) console.warn('Daily rotation autosave failed');
+            }, 500);
+        }
+
         function createRotationItemRow(item = {}) {
             const row = document.createElement('div');
             row.className = 'rotation-item-row';
@@ -1736,8 +1767,12 @@ curl -X POST http://localhost:3000/api/send-message \
                 </div>
             `;
 
-            row.querySelector('.rotation-item-remove')?.addEventListener('click', () => row.remove());
+            row.querySelector('.rotation-item-remove')?.addEventListener('click', () => {
+                row.remove();
+                queueDailyRotationsAutosave();
+            });
             row.querySelector('.rotation-item-send-now')?.addEventListener('click', () => sendRotationItemNow(row));
+            row.querySelector('.rotation-item-text')?.addEventListener('input', queueDailyRotationsAutosave);
             row.addEventListener('dragstart', () => {
                 draggedRotationItemRow = row;
                 row.style.opacity = '0.55';
@@ -1745,6 +1780,7 @@ curl -X POST http://localhost:3000/api/send-message \
             row.addEventListener('dragend', () => {
                 row.style.opacity = '1';
                 draggedRotationItemRow = null;
+                queueDailyRotationsAutosave();
             });
 
             const fileInfoEl = row.querySelector('.rotation-item-file-info');
@@ -1765,6 +1801,7 @@ curl -X POST http://localhost:3000/api/send-message \
                     const mediaPayload = await uploadRotationMedia(file);
                     row.dataset.mediaPayload = JSON.stringify(mediaPayload);
                     if (fileInfoEl) fileInfoEl.textContent = `Uploaded: ${mediaPayload.filename}`;
+                    queueDailyRotationsAutosave();
                 } catch (err) {
                     row.dataset.mediaPayload = '';
                     if (fileInfoEl) fileInfoEl.textContent = 'File loading failed';
@@ -1964,7 +2001,7 @@ curl -X POST http://localhost:3000/api/send-message \
                 }).join('');
 
                 card.innerHTML = `
-                    <div class="btn-delete-rule" onclick="this.parentElement.remove()">
+                    <div class="btn-delete-rule">
                         <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr auto; gap: 12px; margin-bottom: 10px; align-items: end;">
@@ -2007,8 +2044,22 @@ curl -X POST http://localhost:3000/api/send-message \
                 `;
 
                 const itemsContainer = card.querySelector('.rotation-items');
+                card.querySelector('.btn-delete-rule')?.addEventListener('click', () => {
+                    card.remove();
+                    queueDailyRotationsAutosave();
+                });
                 card.querySelector('.reset-rotation-queue')?.addEventListener('click', () => resetDailyRotationQueue(card.dataset.rotationId || ''));
-                card.querySelector('.add-rotation-item')?.addEventListener('click', () => appendRotationItemRow(itemsContainer, { text: '', media: null }));
+                card.querySelector('.add-rotation-item')?.addEventListener('click', () => {
+                    appendRotationItemRow(itemsContainer, { text: '', media: null });
+                    queueDailyRotationsAutosave();
+                });
+                card.querySelector('.rotation-name')?.addEventListener('input', queueDailyRotationsAutosave);
+                card.querySelector('.rotation-enabled')?.addEventListener('change', queueDailyRotationsAutosave);
+                card.querySelector('.rotation-group-id')?.addEventListener('input', queueDailyRotationsAutosave);
+                card.querySelector('.rotation-time')?.addEventListener('change', queueDailyRotationsAutosave);
+                card.querySelectorAll('.rotation-day').forEach(dayEl => {
+                    dayEl.addEventListener('click', () => setTimeout(queueDailyRotationsAutosave, 0));
+                });
                 if (items.length > 0) items.forEach(item => appendRotationItemRow(itemsContainer, item));
                 else appendRotationItemRow(itemsContainer, { text: '', media: null });
 
@@ -2031,11 +2082,14 @@ curl -X POST http://localhost:3000/api/send-message \
             const current = collectDailyRotationRulesFromUI();
             current.push(rule);
             renderDailyRotations(current);
+            queueDailyRotationsAutosave();
         }
 
         async function loadDailyRotations() {
             if (!selectedSessionId) return;
             try {
+                suppressDailyRotationsAutosave = true;
+                clearTimeout(dailyRotationsAutosaveTimer);
                 const res = await fetch(`/api/group/daily-rotations?sessionId=${encodeURIComponent(selectedSessionId)}&t=${Date.now()}`);
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Failed to load daily rotations');
@@ -2045,6 +2099,8 @@ curl -X POST http://localhost:3000/api/send-message \
                 if (dailyRotationsContainer) {
                     dailyRotationsContainer.innerHTML = `<p style="font-size:0.85rem; color: var(--danger); text-align:center; padding:12px;">Failed to load daily rotations: ${err.message}</p>`;
                 }
+            } finally {
+                suppressDailyRotationsAutosave = false;
             }
         }
 
@@ -2092,9 +2148,10 @@ curl -X POST http://localhost:3000/api/send-message \
             if (!selectedSessionId) return;
 
             const inputEl = document.getElementById('group-id-input');
-            const messageEl = document.getElementById('group-welcome-message');
             const enabledEl = document.getElementById('group-welcome-enabled');
-            if (!inputEl || !messageEl || !enabledEl) return;
+            const minDelayEl = document.getElementById('group-welcome-min-delay');
+            const maxDelayEl = document.getElementById('group-welcome-max-delay');
+            if (!inputEl || !enabledEl || !minDelayEl || !maxDelayEl) return;
 
             const normalizedGroupId = normalizeGroupIdForUI(explicitGroupId || inputEl.value);
             if (!normalizedGroupId) return;
@@ -2109,11 +2166,15 @@ curl -X POST http://localhost:3000/api/send-message \
                 }
 
                 enabledEl.checked = !!data.enabled;
-                messageEl.value = data.message || '';
+                minDelayEl.value = data.minDelaySeconds || 15;
+                maxDelayEl.value = data.maxDelaySeconds || 180;
+                renderGroupWelcomeMessages(Array.isArray(data.messages) && data.messages.length ? data.messages : [data.message || '']);
             } catch (err) {
                 console.error('Failed loading group welcome message:', err);
                 enabledEl.checked = false;
-                messageEl.value = '';
+                minDelayEl.value = 15;
+                maxDelayEl.value = 180;
+                renderGroupWelcomeMessages(['']);
             }
         }
 
@@ -2124,9 +2185,10 @@ curl -X POST http://localhost:3000/api/send-message \
             }
 
             const inputEl = document.getElementById('group-id-input');
-            const messageEl = document.getElementById('group-welcome-message');
             const enabledEl = document.getElementById('group-welcome-enabled');
-            if (!inputEl || !messageEl || !enabledEl) return;
+            const minDelayEl = document.getElementById('group-welcome-min-delay');
+            const maxDelayEl = document.getElementById('group-welcome-max-delay');
+            if (!inputEl || !enabledEl || !minDelayEl || !maxDelayEl) return;
 
             const normalizedGroupId = normalizeGroupIdForUI(inputEl.value);
             if (!normalizedGroupId) {
@@ -2134,11 +2196,16 @@ curl -X POST http://localhost:3000/api/send-message \
                 return;
             }
 
+            const messages = getGroupWelcomeMessages();
+
             const payload = {
                 sessionId: selectedSessionId,
                 groupId: normalizedGroupId,
                 enabled: enabledEl.checked,
-                message: messageEl.value || ''
+                messages,
+                message: messages[0] || '',
+                minDelaySeconds: minDelayEl.value,
+                maxDelaySeconds: maxDelayEl.value
             };
 
             try {
@@ -2156,11 +2223,54 @@ curl -X POST http://localhost:3000/api/send-message \
 
                 inputEl.value = normalizedGroupId;
                 enabledEl.checked = !!data.enabled;
-                messageEl.value = data.message || '';
+                minDelayEl.value = data.minDelaySeconds || 15;
+                maxDelayEl.value = data.maxDelaySeconds || 180;
+                renderGroupWelcomeMessages(Array.isArray(data.messages) && data.messages.length ? data.messages : [data.message || '']);
                 alert('הודעת ברוכים הבאים נשמרה בהצלחה');
             } catch (err) {
                 alert('שגיאת תקשורת: ' + err.message);
             }
+        }
+
+        function getGroupWelcomeMessages() {
+            const inputs = Array.from(document.querySelectorAll('.group-welcome-message-item'));
+            return inputs
+                .map(input => input.value.trim())
+                .filter(Boolean);
+        }
+
+        function renderGroupWelcomeMessages(messages = ['']) {
+            const listEl = document.getElementById('group-welcome-message-list');
+            if (!listEl) return;
+
+            const normalizedMessages = Array.isArray(messages) && messages.length
+                ? messages.filter(message => typeof message === 'string')
+                : [''];
+
+            listEl.innerHTML = normalizedMessages.map((message, index) => `
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <textarea class="group-welcome-message-item" rows="3" placeholder="Private welcome message sent when a user joins this group via invite link..." style="flex:1;">${escapeHtml(message || '')}</textarea>
+                    <button onclick="removeGroupWelcomeMessageRow(${index})" class="btn-quick-filter" type="button" style="padding: 8px 10px;">
+                        <i data-lucide="trash-2" style="width: 12px;"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                window.lucide.createIcons();
+            }
+        }
+
+        function addGroupWelcomeMessageRow(message = '') {
+            const messages = getGroupWelcomeMessages();
+            messages.push(message);
+            renderGroupWelcomeMessages(messages);
+        }
+
+        function removeGroupWelcomeMessageRow(index) {
+            const messages = getGroupWelcomeMessages();
+            messages.splice(index, 1);
+            renderGroupWelcomeMessages(messages.length ? messages : ['']);
         }
 
         async function lockGroup() {
