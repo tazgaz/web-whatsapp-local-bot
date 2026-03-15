@@ -337,19 +337,70 @@ function getGroupWelcomeMessagesStore() {
     return store;
 }
 
+function normalizeWelcomeMessages(messages, fallbackMessage = '') {
+    const normalizedMessages = Array.isArray(messages)
+        ? messages
+            .filter(message => typeof message === 'string')
+            .map(message => message.trim())
+            .filter(Boolean)
+        : [];
+
+    if (normalizedMessages.length > 0) return normalizedMessages;
+
+    const fallback = typeof fallbackMessage === 'string' ? fallbackMessage.trim() : '';
+    return fallback ? [fallback] : [];
+}
+
+function normalizeWelcomeDelayRange(minDelaySeconds, maxDelaySeconds) {
+    const parsedMin = Number.parseInt(minDelaySeconds, 10);
+    const parsedMax = Number.parseInt(maxDelaySeconds, 10);
+    const safeMin = Number.isFinite(parsedMin) ? parsedMin : 15;
+    const safeMax = Number.isFinite(parsedMax) ? parsedMax : 180;
+    const boundedMin = Math.min(Math.max(safeMin, 1), 180);
+    const boundedMax = Math.min(Math.max(safeMax, 1), 180);
+
+    return {
+        minDelaySeconds: Math.min(boundedMin, boundedMax),
+        maxDelaySeconds: Math.max(boundedMin, boundedMax)
+    };
+}
+
+function getRandomIntegerInclusive(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickRandomItem(items = []) {
+    if (!Array.isArray(items) || items.length === 0) return '';
+    return items[Math.floor(Math.random() * items.length)] || '';
+}
+
 function getGroupWelcomeMessage(sessionId, groupId) {
     const sid = sessionId || 'default';
     const normalizedGroupId = normalizeGroupId(groupId);
-    if (!normalizedGroupId) return { enabled: false, message: '' };
+    if (!normalizedGroupId) {
+        return {
+            enabled: false,
+            message: '',
+            messages: [],
+            minDelaySeconds: 15,
+            maxDelaySeconds: 180
+        };
+    }
 
     const store = getGroupWelcomeMessagesStore();
     const sessionData = store.sessions[sid] || {};
     const groups = sessionData.groups || {};
     const settings = groups[normalizedGroupId] || {};
 
+    const messages = normalizeWelcomeMessages(settings.messages, settings.message);
+    const delayRange = normalizeWelcomeDelayRange(settings.minDelaySeconds, settings.maxDelaySeconds);
+
     return {
         enabled: !!settings.enabled,
-        message: typeof settings.message === 'string' ? settings.message : ''
+        message: messages[0] || '',
+        messages,
+        minDelaySeconds: delayRange.minDelaySeconds,
+        maxDelaySeconds: delayRange.maxDelaySeconds
     };
 }
 
@@ -362,9 +413,15 @@ function setGroupWelcomeMessage(sessionId, groupId, payload = {}) {
     if (!store.sessions[sid]) store.sessions[sid] = {};
     if (!store.sessions[sid].groups) store.sessions[sid].groups = {};
 
+    const messages = normalizeWelcomeMessages(payload.messages, payload.message);
+    const delayRange = normalizeWelcomeDelayRange(payload.minDelaySeconds, payload.maxDelaySeconds);
+
     store.sessions[sid].groups[normalizedGroupId] = {
-        enabled: !!payload.enabled,
-        message: typeof payload.message === 'string' ? payload.message : '',
+        enabled: !!payload.enabled && messages.length > 0,
+        message: messages[0] || '',
+        messages,
+        minDelaySeconds: delayRange.minDelaySeconds,
+        maxDelaySeconds: delayRange.maxDelaySeconds,
         updatedAt: new Date().toISOString()
     };
 
@@ -691,13 +748,13 @@ function startSession(sessionId) {
             const recipients = Array.isArray(notification.recipientIds) ? notification.recipientIds : [];
             logToUI(sessionId, `נ‘¥ group_join event: type=${joinType || 'unknown'} group=${groupId || 'unknown'} recipients=${recipients.length}`);
 
-            const isInviteJoin = joinType === 'invite' || joinType === 'linked_group_join' || joinType === 'add';
+            const isInviteJoin = joinType === 'invite' || joinType === 'linked_group_join';
             if (!isInviteJoin) return;
 
             if (!groupId) return;
 
             const welcome = getGroupWelcomeMessage(sessionId, groupId);
-            if (!welcome.enabled || !welcome.message.trim()) return;
+            if (!welcome.enabled || welcome.messages.length === 0) return;
 
             if (recipients.length === 0) return;
 
@@ -708,12 +765,20 @@ function startSession(sessionId) {
             if (uniqueRecipients.length === 0) return;
 
             for (const recipientId of uniqueRecipients) {
-                try {
-                    await client.sendMessage(recipientId, welcome.message, { sendSeen: false });
-                    logToUI(sessionId, `נ‘‹ Welcome DM sent to ${recipientId} for group ${groupId} (join via link).`);
-                } catch (sendErr) {
-                    logToUI(sessionId, `ג ן¸ Failed sending welcome DM to ${recipientId}: ${sendErr.message}`);
-                }
+                const delaySeconds = getRandomIntegerInclusive(welcome.minDelaySeconds, welcome.maxDelaySeconds);
+                const messageToSend = pickRandomItem(welcome.messages);
+                if (!messageToSend) continue;
+
+                logToUI(sessionId, `⏳ Welcome DM scheduled to ${recipientId} for group ${groupId} in ${delaySeconds}s.`);
+
+                setTimeout(async () => {
+                    try {
+                        await client.sendMessage(recipientId, messageToSend, { sendSeen: false });
+                        logToUI(sessionId, `נ‘‹ Welcome DM sent to ${recipientId} for group ${groupId} after ${delaySeconds}s delay.`);
+                    } catch (sendErr) {
+                        logToUI(sessionId, `ג ן¸ Failed sending welcome DM to ${recipientId}: ${sendErr.message}`);
+                    }
+                }, delaySeconds * 1000);
             }
         } catch (err) {
             logToUI(sessionId, `ג ן¸ group_join handler error: ${err.message}`);
@@ -1727,7 +1792,10 @@ app.get('/api/group/welcome-message', (req, res) => {
             success: true,
             groupId: normalizedGroupId,
             enabled: settings.enabled,
-            message: settings.message
+            message: settings.message,
+            messages: settings.messages,
+            minDelaySeconds: settings.minDelaySeconds,
+            maxDelaySeconds: settings.maxDelaySeconds
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1735,7 +1803,7 @@ app.get('/api/group/welcome-message', (req, res) => {
 });
 
 app.post('/api/group/welcome-message', async (req, res) => {
-    const { groupId, message, enabled, sessionId } = req.body || {};
+    const { groupId, message, messages, enabled, sessionId, minDelaySeconds, maxDelaySeconds } = req.body || {};
     const sid = sessionId || 'default';
 
     if (!groupId) {
@@ -1765,11 +1833,15 @@ app.post('/api/group/welcome-message', async (req, res) => {
             return res.status(403).json({ error: 'Bot is not admin in this group' });
         }
 
-        const normalizedMessage = typeof message === 'string' ? message.trim() : '';
-        const isEnabled = !!enabled && normalizedMessage.length > 0;
+        const normalizedMessages = normalizeWelcomeMessages(messages, message);
+        const delayRange = normalizeWelcomeDelayRange(minDelaySeconds, maxDelaySeconds);
+        const isEnabled = !!enabled && normalizedMessages.length > 0;
         setGroupWelcomeMessage(sid, normalizedGroupId, {
             enabled: isEnabled,
-            message: normalizedMessage
+            message: normalizedMessages[0] || '',
+            messages: normalizedMessages,
+            minDelaySeconds: delayRange.minDelaySeconds,
+            maxDelaySeconds: delayRange.maxDelaySeconds
         });
 
         logToUI(sid, `נ›  Group welcome message updated for ${chat.name} (${normalizedGroupId}) [enabled=${isEnabled}]`);
@@ -1777,7 +1849,10 @@ app.post('/api/group/welcome-message', async (req, res) => {
             success: true,
             groupId: normalizedGroupId,
             enabled: isEnabled,
-            message: normalizedMessage
+            message: normalizedMessages[0] || '',
+            messages: normalizedMessages,
+            minDelaySeconds: delayRange.minDelaySeconds,
+            maxDelaySeconds: delayRange.maxDelaySeconds
         });
     } catch (err) {
         logToUI(sid, `ג— Error updating group welcome message: ${err.message}`);
